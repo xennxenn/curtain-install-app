@@ -30,7 +30,15 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
   const [isPanning, setIsPanning] = useState<any>(false);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null); 
   const [pointDrag, setPointDrag] = useState<{ areaId: string; pIdx: number } | null>(null); 
-  const [panelPos, setPanelPos] = useState({ x: 10, y: 50 });
+  const [panelPos, setPanelPos] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return {
+        x: window.innerWidth > 1024 ? window.innerWidth - 360 : 20,
+        y: 120
+      };
+    }
+    return { x: 20, y: 80 };
+  });
   const [draggingPanel, setDraggingPanel] = useState(false);
   const [panelDragStart, setPanelDragStart] = useState({ x: 0, y: 0 });
   const [isUploadingObj, setIsUploadingObj] = useState(false);
@@ -159,15 +167,16 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
 
   useEffect(() => {
     const handleGlobalPanelMove = (e: MouseEvent | TouchEvent) => {
-      if (draggingPanel && wrapperRef.current) {
+      if (draggingPanel) {
         let clientX = e instanceof MouseEvent ? e.clientX : (e.touches?.[0]?.clientX ?? 0);
         let clientY = e instanceof MouseEvent ? e.clientY : (e.touches?.[0]?.clientY ?? 0);
 
-        const rect = wrapperRef.current.getBoundingClientRect();
-        let newX = clientX - rect.left - panelDragStart.x;
-        let newY = clientY - rect.top - panelDragStart.y;
-        newX = Math.max(-100, Math.min(newX, window.innerWidth - 100));
-        newY = Math.max(-50, Math.min(newY, window.innerHeight - 100));
+        let newX = clientX - panelDragStart.x;
+        let newY = clientY - panelDragStart.y;
+        
+        // Ensure the panel doesn't go off-screen easily
+        newX = Math.max(10, Math.min(newX, window.innerWidth - 350));
+        newY = Math.max(10, Math.min(newY, window.innerHeight - 450));
         setPanelPos({ x: newX, y: newY });
       }
     };
@@ -189,13 +198,10 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
 
   const onPanelMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
-    if (wrapperRef.current) {
-      let clientX = e.nativeEvent instanceof MouseEvent ? e.nativeEvent.clientX : (e.nativeEvent as TouchEvent).touches?.[0]?.clientX ?? 0;
-      let clientY = e.nativeEvent instanceof MouseEvent ? e.nativeEvent.clientY : (e.nativeEvent as TouchEvent).touches?.[0]?.clientY ?? 0;
-      const rect = wrapperRef.current.getBoundingClientRect();
-      setDraggingPanel(true);
-      setPanelDragStart({ x: clientX - rect.left - panelPos.x, y: clientY - rect.top - panelPos.y });
-    }
+    let clientX = e.nativeEvent instanceof MouseEvent ? e.nativeEvent.clientX : (e.nativeEvent as TouchEvent).touches?.[0]?.clientX ?? 0;
+    let clientY = e.nativeEvent instanceof MouseEvent ? e.nativeEvent.clientY : (e.nativeEvent as TouchEvent).touches?.[0]?.clientY ?? 0;
+    setDraggingPanel(true);
+    setPanelDragStart({ x: clientX - panelPos.x, y: clientY - panelPos.y });
   };
 
   const handleAddArea = () => {
@@ -617,8 +623,8 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
 
       {item.image && showControls && (
         <div 
-          style={{ position: 'absolute', left: panelPos.x, top: panelPos.y }}
-          className="w-[90vw] sm:w-[340px] max-w-[340px] z-[999] bg-white/95 backdrop-blur-sm border border-gray-300 rounded shadow-2xl flex flex-col no-print cursor-default transition-shadow"
+          style={{ position: 'fixed', left: panelPos.x, top: panelPos.y }}
+          className="w-[90vw] sm:w-[340px] max-w-[340px] z-[999999] bg-white/95 backdrop-blur-sm border border-gray-300 rounded shadow-2xl flex flex-col no-print cursor-default transition-shadow"
           onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
         >
           <div onMouseDown={onPanelMouseDown} onTouchStart={onPanelMouseDown} className="bg-gray-800 text-white px-3 py-2 flex justify-between items-center cursor-move rounded-t selection:bg-transparent">

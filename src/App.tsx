@@ -433,11 +433,6 @@ const App: React.FC = () => {
               <p className="text-sm text-gray-500">ระบบจัดการใบงานผ้าม่าน - สวัสดีคุณ <span className="font-bold text-blue-600">{appUser.name || appUser.username}</span> {appUser.role === 'admin' && '(Admin)'}</p>
             </div>
             <div className="flex flex-wrap gap-2 md:gap-3">
-              {appUser.role === 'admin' && (
-                <a href={`/api/download-project?username=${encodeURIComponent(appUser.username)}`} download className="bg-emerald-600 text-white px-4 py-2 rounded flex items-center justify-center font-bold hover:bg-emerald-700 shadow flex-1 md:flex-none transition-all text-sm h-10">
-                  <Download size={16} className="mr-2"/> ดาวน์โหลด Source Code (.ZIP)
-                </a>
-              )}
               {appUser.role === 'admin' && <button onClick={()=>setShowUserMgmt(true)} className="bg-purple-600 text-white px-4 py-2 rounded flex items-center justify-center font-bold hover:bg-purple-700 shadow flex-1 md:flex-none transition-all text-sm h-10"><Users size={16} className="mr-2"/> จัดการพนักงาน</button>}
               <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded flex items-center justify-center font-bold hover:bg-red-600 shadow flex-1 md:flex-none transition-all text-sm h-10"><LogOut size={16} className="mr-2"/> ออกจากระบบ</button>
             </div>
