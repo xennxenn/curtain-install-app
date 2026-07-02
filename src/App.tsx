@@ -631,6 +631,11 @@ const App: React.FC = () => {
             let imgMain = null; let txtMain = ''; let colMain = '';
             let imgSheer = null; let txtSheer = ''; let colSheer = '';
             
+            let tapeImg = null;
+            let tapeText = '';
+            let tapeColorValue = '';
+            const isBlindsHoriz = (sMain1 || '').includes('มู่ลี่');
+            
             if (item.areas.length > 0) {
                const allFabs = primaryArea.fabrics || [];
                const fab1 = allFabs[0];
@@ -645,6 +650,42 @@ const App: React.FC = () => {
                  imgSheer = getFabImg(fab2);
                  txtSheer = fab2.subType || 'ม่าน 2';
                  colSheer = `${fab2.name || ''} ${fab2.name && fab2.color ? '/' : ''} ${fab2.color || ''}`.trim();
+               }
+               
+               if (isBlindsHoriz) {
+                 const tapeFab = primaryArea.fabrics?.find((f: any) => 
+                   f.name?.toUpperCase().includes('TAPE FOR BLINDS') || 
+                   f.name?.toUpperCase().includes('TAPE') || 
+                   f.name?.includes('เทป') ||
+                   f.subType?.toUpperCase().includes('TAPE') ||
+                   f.subType?.includes('เทป')
+                 );
+                 if (tapeFab) {
+                   tapeImg = getFabImg(tapeFab);
+                   tapeText = `${tapeFab.name || ''} ${tapeFab.color || ''}`.trim();
+                 }
+                 
+                 let autoTapeColor = '#8B4513';
+                 if (tapeFab && tapeFab.color) {
+                   if (tapeFab.color.startsWith('#')) {
+                     autoTapeColor = tapeFab.color;
+                   } else {
+                     const lowerCol = tapeFab.color.toLowerCase();
+                     if (lowerCol.includes('ครีม') || lowerCol.includes('cream')) autoTapeColor = '#FFFDD0';
+                     else if (lowerCol.includes('ขาว') || lowerCol.includes('white')) autoTapeColor = '#F9F9F9';
+                     else if (lowerCol.includes('เทา') || lowerCol.includes('gray') || lowerCol.includes('grey')) autoTapeColor = '#9CA3AF';
+                     else if (lowerCol.includes('น้ำตาล') || lowerCol.includes('brown')) autoTapeColor = '#78350F';
+                     else if (lowerCol.includes('เบจ') || lowerCol.includes('beige')) autoTapeColor = '#F5F5DC';
+                     else if (lowerCol.includes('ทอง') || lowerCol.includes('gold')) autoTapeColor = '#FBBF24';
+                     else if (lowerCol.includes('น้ำเงิน') || lowerCol.includes('blue')) autoTapeColor = '#1E3A8A';
+                     else if (lowerCol.includes('ชมพู') || lowerCol.includes('pink')) autoTapeColor = '#F472B6';
+                     else if (lowerCol.includes('เขียว') || lowerCol.includes('green')) autoTapeColor = '#047857';
+                     else if (lowerCol.includes('แดง') || lowerCol.includes('red')) autoTapeColor = '#B91C1C';
+                     else if (lowerCol.includes('ดำ') || lowerCol.includes('black') || lowerCol.includes('charcoal') || lowerCol.includes('เทาเข้ม') || lowerCol.includes('dark') || lowerCol.includes('เข้ม') || lowerCol.includes('t8') || lowerCol.includes('t5')) autoTapeColor = '#1F2937';
+                     else autoTapeColor = '#E5E7EB';
+                   }
+                 }
+                 tapeColorValue = primaryArea.blindsTapeColor || autoTapeColor;
                }
             }
 
@@ -672,7 +713,11 @@ const App: React.FC = () => {
                       <div className="h-[25%] lg:h-[30%] print:h-[30%] min-h-[100px] w-full p-2 bg-gray-50 flex items-center overflow-x-auto">
                         <div className="w-full h-full min-w-[350px] md:min-w-[400px] grid grid-cols-4 gap-1.5 sm:gap-2 print:gap-4">
                           <InfoCard title="รูปแบบม่าน" imgUrl={styleImg1} text1={`${sMain1 || '-'} ${item.layers === 2 ? `/ ${sMain2 || '-'}` : ''}`} />
-                          <InfoCard title={txtMain || 'ชั้นที่ 1'} imgUrl={imgMain} text1={colMain || '-'} />
+                          <InfoCard 
+                            title={txtMain || 'ชั้นที่ 1'} 
+                            imgUrl={imgMain} 
+                            text1={colMain || '-'} 
+                          />
                           <InfoCard title={item.layers === 2 ? (txtSheer || 'ชั้นที่ 2') : 'ชั้นที่ 2'} imgUrl={item.layers === 2 ? imgSheer : null} text1={item.layers === 2 ? (colSheer || '-') : '-'} isDim={item.layers === 1} />
                           <InfoCard title="ระยะชายม่าน" imgUrl={marginImg} text1={item.marginBottom || '-'} />
                         </div>

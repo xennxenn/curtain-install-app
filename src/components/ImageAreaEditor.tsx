@@ -43,6 +43,12 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
   });
   const [draggingPanel, setDraggingPanel] = useState(false);
   const [panelDragStart, setPanelDragStart] = useState({ x: 0, y: 0 });
+  const [edgeMenu, setEdgeMenu] = useState<{
+    x: number;
+    y: number;
+    areaId: string;
+    segmentIndex: number;
+  } | null>(null);
   const [isUploadingObj, setIsUploadingObj] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -227,7 +233,27 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
 
   const handleUpdateArea = (areaId: string, field: string, value: any) => handleItemChange(item.id, 'areas', item.areas.map((a: any) => a.id === areaId ? { ...a, [field]: value } : a));
 
+  const handleSetEdgeType = (areaId: string, segmentIndex: number, type: 'top' | 'bottom' | 'left' | 'right' | null) => {
+    const area = item.areas.find((a: any) => a.id === areaId);
+    if (!area) return;
+    const currentEdgeTypes = { ...(area.edgeTypes || {}) };
+    if (type === null) {
+      delete currentEdgeTypes[segmentIndex];
+    } else {
+      // Clear any existing assignment of the same type in this area
+      Object.keys(currentEdgeTypes).forEach(k => {
+        if (currentEdgeTypes[k] === type) {
+          delete currentEdgeTypes[k];
+        }
+      });
+      currentEdgeTypes[segmentIndex] = type;
+    }
+    handleUpdateArea(areaId, 'edgeTypes', currentEdgeTypes);
+    setEdgeMenu(null);
+  };
+
   const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => { 
+    setEdgeMenu(null);
     let clientX = e.nativeEvent instanceof MouseEvent ? e.nativeEvent.clientX : (e.nativeEvent as TouchEvent).touches?.[0]?.clientX ?? 0;
     let clientY = e.nativeEvent instanceof MouseEvent ? e.nativeEvent.clientY : (e.nativeEvent as TouchEvent).touches?.[0]?.clientY ?? 0;
     if (mode === 'pan') {
@@ -365,6 +391,19 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                         <feFuncA type="linear" slope="5" />
                       </feComponentTransfer>
                     </filter>
+                    <linearGradient id={`blinds-horiz-grad-${idPrefix}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity={0.28} />
+                      <stop offset="15%" stopColor="#ffffff" stopOpacity={0.08} />
+                      <stop offset="70%" stopColor="#000000" stopOpacity={0.12} />
+                      <stop offset="100%" stopColor="#000000" stopOpacity={0.48} />
+                    </linearGradient>
+                    <linearGradient id={`blinds-vert-grad-${idPrefix}`} x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#000000" stopOpacity={0.48} />
+                      <stop offset="12%" stopColor="#000000" stopOpacity={0.15} />
+                      <stop offset="50%" stopColor="#ffffff" stopOpacity={0.15} />
+                      <stop offset="85%" stopColor="#000000" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="#000000" stopOpacity={0.45} />
+                    </linearGradient>
                     {item.areas.map((area: any) => {
                         const clipId = `clip-${idPrefix}-${item.id}-${area.id}`;
                         const patId = `pat-${idPrefix}-${item.id}-${area.id}`;
@@ -372,7 +411,15 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                         const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
                         const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
 
-                        const fab1 = area.fabrics?.[0];
+                        // Find first fabric with fallback to the first area in the item that has fabrics
+                        let fab1 = area.fabrics?.[0];
+                        if (!fab1) {
+                          const firstAreaWithFabric = item.areas.find((a: any) => a.fabrics && a.fabrics.length > 0);
+                          if (firstAreaWithFabric) {
+                            fab1 = firstAreaWithFabric.fabrics[0];
+                          }
+                        }
+
                         let fabricImg = null;
                         if (fab1) {
                           if (fab1.image) {
@@ -385,19 +432,124 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                         }
 
                         const styleMain1 = area.styleMain1 || item.styleMain1 || item.styleMain || '';
-                        const isBlinds = styleMain1.includes('มู่ลี่') || styleMain1.includes('ม่านปรับแสง');
+                        const isBlindsHoriz = styleMain1.includes('มู่ลี่');
+                        const isBlindsVert = styleMain1.includes('ม่านปรับแสง');
                         const isRollerBlind = styleMain1.includes('ม่านม้วน');
                         const patternScale = (area.patternScale || 100) / 100;
                         const patSize = (isRollerBlind ? (80 / 50) : 80) * patternScale;
+
+                        const horizPatId = `blinds-horiz-${idPrefix}-${item.id}-${area.id}`;
+                        const vertPatId = `blinds-vert-${idPrefix}-${item.id}-${area.id}`;
+
+                        // Calculate dynamic slat size
+                        const slatSize = area.blindsSlatSize || (isBlindsHoriz ? 14 : 36);
+                        const horizSlatH = isBlindsHoriz ? slatSize : 14;
+                        const horizSlatW = horizSlatH * 8;
+                        const vertSlatW = isBlindsVert ? slatSize : 36;
+                        const vertSlatH = vertSlatW * 1.1;
+
+                        const tapeW = horizSlatH * 1.2;
+
+                        // Calculate tilt angle based on the top edge of the curtain area
+                        let blindsAngle = area.blindsAngle !== undefined ? area.blindsAngle : 0;
+                        const autoTilt = area.autoTilt !== false;
+                        
+                        if (autoTilt && area.points && area.points.length >= 2) {
+                          let edges: any[] = [];
+                          for (let i = 0; i < area.points.length; i++) {
+                            let p1 = area.points[i];
+                            let p2 = area.points[(i + 1) % area.points.length];
+                            edges.push({ p1, p2, midY: (p1.y + p2.y) / 2, dx: p2.x - p1.x, dy: p2.y - p1.y });
+                          }
+                          if (edges.length > 0) {
+                            let tEdge = edges.reduce((prev, curr) => prev.midY < curr.midY ? prev : curr);
+                            if (tEdge && (tEdge.dx !== 0 || tEdge.dy !== 0)) {
+                              const rectW = pixelW;
+                              const rectH = pixelH;
+                              const pxDx = tEdge.dx * (rectW / 100);
+                              const pxDy = tEdge.dy * (rectH / 100);
+                              let ang = Math.atan2(pxDy, pxDx) * (180 / Math.PI);
+                              if (ang > 90) ang -= 180;
+                              if (ang < -90) ang += 180;
+                              blindsAngle = ang;
+                            }
+                          }
+                        }
 
                         return (
                           <React.Fragment key={area.id}>
                             <clipPath id={clipId}>
                               <polygon points={area.points.map((p: any) => `${(p.x * pixelW) / 100},${(p.y * pixelH) / 100}`).join(' ')} />
                             </clipPath>
+                            {area.fabrics?.map((fab: any, fIdx: number) => {
+                              const fPatId = `pat-${idPrefix}-${item.id}-${area.id}-${fIdx}`;
+                              let fImg = null;
+                              if (fab.image) {
+                                fImg = fab.image;
+                              } else if (fab.mainType === 'ผ้านอกระบบ (เฉพาะงานนี้)' && generalInfo) {
+                                fImg = (generalInfo.customFabrics || []).find((f: any) => f.subType === fab.subType && f.name === fab.name && f.color === fab.color)?.image;
+                              } else if (appDB?.curtainTypes) {
+                                fImg = appDB.curtainTypes[fab.mainType]?.[fab.subType]?.[fab.name]?.[fab.color];
+                              }
+                              if (!fImg) return null;
+                              return (
+                                <pattern key={fPatId} id={fPatId} patternUnits="userSpaceOnUse" width={patSize} height={patSize}>
+                                  <image href={optImg(fImg, 300)} x="-0.5" y="-0.5" width={patSize + 1} height={patSize + 1} preserveAspectRatio="none" />
+                                </pattern>
+                              );
+                            })}
                             {fabricImg && (
                               <pattern id={patId} patternUnits="userSpaceOnUse" width={patSize} height={patSize}>
                                 <image href={optImg(fabricImg, 300)} x="-0.5" y="-0.5" width={patSize + 1} height={patSize + 1} preserveAspectRatio="none" />
+                              </pattern>
+                            )}
+                            {isBlindsHoriz && (
+                              <pattern 
+                                id={horizPatId} 
+                                patternUnits="userSpaceOnUse" 
+                                width={horizSlatW} 
+                                height={horizSlatH}
+                                patternTransform={`rotate(${blindsAngle})`}
+                              >
+                                <rect x="0" y="0" width={horizSlatW} height={horizSlatH} fill={`url(#blinds-horiz-grad-${idPrefix})`} />
+                                <line x1="0" y1={horizSlatH - 0.5} x2={horizSlatW} y2={horizSlatH - 0.5} stroke="#000000" strokeWidth="1" opacity="0.45" />
+                                <line x1="0" y1="0.5" x2={horizSlatW} y2="0.5" stroke="#ffffff" strokeWidth="1" opacity="0.3" />
+                                {!area.useBlindsTape && (
+                                  <>
+                                    <line x1={horizSlatW * 0.25} y1="0" x2={horizSlatW * 0.25} y2={horizSlatH} stroke="#000000" strokeWidth="1.2" opacity="0.25" />
+                                    <line x1={horizSlatW * 0.25 + 0.6} y1="0" x2={horizSlatW * 0.25 + 0.6} y2={horizSlatH} stroke="#ffffff" strokeWidth="0.8" opacity="0.25" />
+                                    <line x1={horizSlatW * 0.75} y1="0" x2={horizSlatW * 0.75} y2={horizSlatH} stroke="#000000" strokeWidth="1.2" opacity="0.25" />
+                                    <line x1={horizSlatW * 0.75 + 0.6} y1="0" x2={horizSlatW * 0.75 + 0.6} y2={horizSlatH} stroke="#ffffff" strokeWidth="0.8" opacity="0.25" />
+                                  </>
+                                )}
+                                {area.useBlindsTape && (
+                                  <>
+                                    {/* Tape 1 */}
+                                    <rect x={horizSlatW / 4 - tapeW / 2} y="0" width={tapeW} height={horizSlatH} fill={area.blindsTapeColor || '#8B4513'} opacity={0.85} />
+                                    <rect x={horizSlatW / 4 - tapeW / 2} y="0" width={tapeW} height={horizSlatH} fill={`url(#blinds-horiz-grad-${idPrefix})`} opacity={0.4} style={{ mixBlendMode: 'multiply' }} />
+                                    <line x1={horizSlatW / 4 - tapeW / 2} y1="0" x2={horizSlatW / 4 - tapeW / 2} y2={horizSlatH} stroke="#000000" strokeWidth="0.5" opacity="0.15" />
+                                    <line x1={horizSlatW / 4 + tapeW / 2} y1="0" x2={horizSlatW / 4 + tapeW / 2} y2={horizSlatH} stroke="#000000" strokeWidth="0.5" opacity="0.15" />
+
+                                    {/* Tape 2 */}
+                                    <rect x={3 * horizSlatW / 4 - tapeW / 2} y="0" width={tapeW} height={horizSlatH} fill={area.blindsTapeColor || '#8B4513'} opacity={0.85} />
+                                    <rect x={3 * horizSlatW / 4 - tapeW / 2} y="0" width={tapeW} height={horizSlatH} fill={`url(#blinds-horiz-grad-${idPrefix})`} opacity={0.4} style={{ mixBlendMode: 'multiply' }} />
+                                    <line x1={3 * horizSlatW / 4 - tapeW / 2} y1="0" x2={3 * horizSlatW / 4 - tapeW / 2} y2={horizSlatH} stroke="#000000" strokeWidth="0.5" opacity="0.15" />
+                                    <line x1={3 * horizSlatW / 4 + tapeW / 2} y1="0" x2={3 * horizSlatW / 4 + tapeW / 2} y2={horizSlatH} stroke="#000000" strokeWidth="0.5" opacity="0.15" />
+                                  </>
+                                )}
+                              </pattern>
+                            )}
+                            {isBlindsVert && (
+                              <pattern 
+                                id={vertPatId} 
+                                patternUnits="userSpaceOnUse" 
+                                width={vertSlatW} 
+                                height={vertSlatH}
+                                patternTransform={`rotate(${blindsAngle})`}
+                              >
+                                <rect x="0" y="0" width={vertSlatW} height={vertSlatH} fill={`url(#blinds-vert-grad-${idPrefix})`} />
+                                <line x1="0" y1="0" x2="0" y2={vertSlatH} stroke="#000000" strokeWidth="1" opacity="0.4" />
+                                <line x1="1" y1="0" x2="1" y2={vertSlatH} stroke="#ffffff" strokeWidth="1" opacity="0.3" />
                               </pattern>
                             )}
                           </React.Fragment>
@@ -435,14 +587,20 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                       const maskOpacity = (area.maskOpacity ?? 87) / 100;
                       
                       const action = area.styleAction1 || item.styleAction1 || item.styleAction || '';
+                      
                       const masks = appDB.masks?.[styleMain1] || {};
                       const maskImgFallback = masks[action] || masks['ALL'] || Object.values(masks)[0];
-                      let maskElements: any[] = [];
                       
                       const dist = (p1: any, p2: any) => Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
 
-                      // Find the first fabric of the area to dye/texture the mask folds
-                      const fab1 = area.fabrics?.[0];
+                      // Find the first fabric of the area to dye/texture the mask folds with fallback
+                      let fab1 = area.fabrics?.[0];
+                      if (!fab1) {
+                        const firstAreaWithFabric = item.areas.find((a: any) => a.fabrics && a.fabrics.length > 0);
+                        if (firstAreaWithFabric) {
+                          fab1 = firstAreaWithFabric.fabrics[0];
+                        }
+                      }
                       let fabricColor = '#D1D5DB'; 
                       let fabricImg = null;
 
@@ -477,8 +635,496 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
 
                       const finalColor = fab1 ? fabricColor : area.lineColor;
                       const patId = `pat-${idPrefix}-${item.id}-${area.id}`;
-                      
-                      if (maskImgFallback) {
+
+                      const isBlindsHoriz = styleMain1.includes('มู่ลี่');
+                      const isBlindsVert = styleMain1.includes('ม่านปรับแสง');
+                      const isBlindsStyle = isBlindsHoriz || isBlindsVert;
+
+                      const getEdgeAngle = (edge: any) => {
+                        const pxDx = edge.dx * (pixelW / 100);
+                        const pxDy = edge.dy * (pixelH / 100);
+                        if (pxDx === 0 && pxDy === 0) return 0;
+                        let ang = Math.atan2(pxDy, pxDx) * (180 / Math.PI);
+                        if (ang > 90) ang -= 180;
+                        if (ang < -90) ang += 180;
+                        return ang;
+                      };
+
+                      let edges: any[] = [];
+                      for (let i = 0; i < area.points.length; i++) {
+                        let p1 = area.points[i];
+                        let p2 = area.points[(i + 1) % area.points.length];
+                        edges.push({
+                          index: i,
+                          p1,
+                          p2,
+                          midX: (p1.x + p2.x) / 2,
+                          midY: (p1.y + p2.y) / 2,
+                          dx: p2.x - p1.x,
+                          dy: p2.y - p1.y
+                        });
+                      }
+
+                      let autoTapeColor = '#8B4513';
+                      let hasAutoTape = false;
+                      const tapeFab = area.fabrics?.find((f: any) => 
+                        f.name?.toUpperCase().includes('TAPE FOR BLINDS') || 
+                        f.name?.toUpperCase().includes('TAPE') || 
+                        f.name?.includes('เทป') ||
+                        f.subType?.toUpperCase().includes('TAPE') ||
+                        f.subType?.includes('เทป')
+                      ) || item.areas?.flatMap((a: any) => a.fabrics || [])?.find((f: any) => 
+                        f.name?.toUpperCase().includes('TAPE FOR BLINDS') || 
+                        f.name?.toUpperCase().includes('TAPE') || 
+                        f.name?.includes('เทป') ||
+                        f.subType?.toUpperCase().includes('TAPE') ||
+                        f.subType?.includes('เทป')
+                      );
+
+                      if (tapeFab) {
+                        hasAutoTape = true;
+                        if (tapeFab.color) {
+                          if (tapeFab.color.startsWith('#')) {
+                            autoTapeColor = tapeFab.color;
+                          } else {
+                            const lowerCol = tapeFab.color.toLowerCase();
+                            if (lowerCol.includes('ครีม') || lowerCol.includes('cream')) autoTapeColor = '#FFFDD0';
+                            else if (lowerCol.includes('ขาว') || lowerCol.includes('white')) autoTapeColor = '#F9F9F9';
+                            else if (lowerCol.includes('เทา') || lowerCol.includes('gray') || lowerCol.includes('grey')) autoTapeColor = '#9CA3AF';
+                            else if (lowerCol.includes('น้ำตาล') || lowerCol.includes('brown')) autoTapeColor = '#78350F';
+                            else if (lowerCol.includes('เบจ') || lowerCol.includes('beige')) autoTapeColor = '#F5F5DC';
+                            else if (lowerCol.includes('ทอง') || lowerCol.includes('gold')) autoTapeColor = '#FBBF24';
+                            else if (lowerCol.includes('น้ำเงิน') || lowerCol.includes('blue')) autoTapeColor = '#1E3A8A';
+                            else if (lowerCol.includes('ชมพู') || lowerCol.includes('pink')) autoTapeColor = '#F472B6';
+                            else if (lowerCol.includes('เขียว') || lowerCol.includes('green')) autoTapeColor = '#047857';
+                            else if (lowerCol.includes('แดง') || lowerCol.includes('red')) autoTapeColor = '#B91C1C';
+                            else if (lowerCol.includes('ดำ') || lowerCol.includes('black') || lowerCol.includes('charcoal') || lowerCol.includes('เทาเข้ม') || lowerCol.includes('dark') || lowerCol.includes('เข้ม') || lowerCol.includes('t8') || lowerCol.includes('t5')) autoTapeColor = '#1F2937';
+                            else autoTapeColor = '#E5E7EB';
+                          }
+                        }
+                      }
+
+                      const renderBlindsSlats = () => {
+                        const elements: any[] = [];
+                        
+                        let topEdge = edges.find(e => area.edgeTypes?.[e.index] === 'top');
+                        let bottomEdge = edges.find(e => area.edgeTypes?.[e.index] === 'bottom');
+                        let leftEdge = edges.find(e => area.edgeTypes?.[e.index] === 'left');
+                        let rightEdge = edges.find(e => area.edgeTypes?.[e.index] === 'right');
+                        
+                        if (!topEdge && edges.length > 0) topEdge = edges.reduce((prev, curr) => prev.midY < curr.midY ? prev : curr);
+                        if (!bottomEdge && edges.length > 0) bottomEdge = edges.reduce((prev, curr) => prev.midY > curr.midY ? prev : curr);
+                        if (!leftEdge && edges.length > 0) leftEdge = edges.reduce((prev, curr) => prev.midX < curr.midX ? prev : curr);
+                        if (!rightEdge && edges.length > 0) rightEdge = edges.reduce((prev, curr) => prev.midX > curr.midX ? prev : curr);
+                        
+                        const topAngle = topEdge ? getEdgeAngle(topEdge) : 0;
+                        const bottomAngle = bottomEdge ? getEdgeAngle(bottomEdge) : 0;
+                        const leftAngle = leftEdge ? getEdgeAngle(leftEdge) : -90;
+                        const rightAngle = rightEdge ? getEdgeAngle(rightEdge) : 90;
+                        
+                        const slatSize = area.blindsSlatSize || (isBlindsHoriz ? 14 : 36);
+                        
+                        if (isBlindsHoriz) {
+                          const leftTop = leftEdge ? (leftEdge.p1.y < leftEdge.p2.y ? leftEdge.p1 : leftEdge.p2) : { x: 0, y: 0 };
+                          const leftBot = leftEdge ? (leftEdge.p1.y < leftEdge.p2.y ? leftEdge.p2 : leftEdge.p1) : { x: 0, y: 100 };
+                          const rightTop = rightEdge ? (rightEdge.p1.y < rightEdge.p2.y ? rightEdge.p1 : rightEdge.p2) : { x: 100, y: 0 };
+                          const rightBot = rightEdge ? (rightEdge.p1.y < rightEdge.p2.y ? rightEdge.p2 : rightEdge.p1) : { x: 100, y: 100 };
+
+                          const leftLen = Math.sqrt(Math.pow(scaleX(leftBot.x) - scaleX(leftTop.x), 2) + Math.pow(scaleY(leftBot.y) - scaleY(leftTop.y), 2));
+                          const rightLen = Math.sqrt(Math.pow(scaleX(rightBot.x) - scaleX(rightTop.x), 2) + Math.pow(scaleY(rightBot.y) - scaleY(rightTop.y), 2));
+                          const avgLen = (leftLen + rightLen) / 2 || 1;
+
+                          const activeHeight = h_px * mPct;
+                          const numSlats = Math.ceil(activeHeight / slatSize) + 1;
+
+                          for (let i = 0; i < numSlats; i++) {
+                            const f1 = i / numSlats;
+                            const f2 = (i + 1) / numSlats;
+                            const f_center = (f1 + f2) / 2;
+
+                            const t_center = f_center * mPct;
+
+                            // Left and right points of the slat center-line
+                            const pL_pct = { 
+                              x: leftTop.x * (1 - t_center) + leftBot.x * t_center, 
+                              y: leftTop.y * (1 - t_center) + leftBot.y * t_center 
+                            };
+                            const pR_pct = { 
+                              x: rightTop.x * (1 - t_center) + rightBot.x * t_center, 
+                              y: rightTop.y * (1 - t_center) + rightBot.y * t_center 
+                            };
+
+                            const pL = { x: scaleX(pL_pct.x), y: scaleY(pL_pct.y) };
+                            const pR = { x: scaleX(pR_pct.x), y: scaleY(pR_pct.y) };
+
+                            // Direction vector of the slat
+                            const dx = pR.x - pL.x;
+                            const dy = pR.y - pL.y;
+                            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                            const ux = dx / len;
+                            const uy = dy / len;
+                            // Normal vector (perpendicular, pointing down)
+                            const nx = -uy;
+                            const ny = ux;
+
+                            // Calculate slat height at left and right with perspective scaling
+                            let tiltAngle = topAngle * (1 - t_center) + bottomAngle * t_center;
+                            if (area.autoTilt === false) {
+                              tiltAngle = area.blindsAngle !== undefined ? area.blindsAngle : 0;
+                            }
+                            const H_left = slatSize * (leftLen / avgLen) * Math.abs(Math.cos(tiltAngle * Math.PI / 180));
+                            const H_right = slatSize * (rightLen / avgLen) * Math.abs(Math.cos(tiltAngle * Math.PI / 180));
+
+                            const halfH_left = H_left / 2;
+                            const halfH_right = H_right / 2;
+
+                            // Extend slightly outwards to cover bounds neatly
+                            const extend = 4;
+                            const pL_extended = { x: pL.x - extend * ux, y: pL.y - extend * uy };
+                            const pR_extended = { x: pR.x + extend * ux, y: pR.y + extend * uy };
+
+                            const vTL = { x: pL_extended.x - halfH_left * nx, y: pL_extended.y - halfH_left * ny };
+                            const vTR = { x: pR_extended.x - halfH_right * nx, y: pR_extended.y - halfH_right * ny };
+                            const vBR = { x: pR_extended.x + halfH_right * nx, y: pR_extended.y + halfH_right * ny };
+                            const vBL = { x: pL_extended.x + halfH_left * nx, y: pL_extended.y + halfH_left * ny };
+
+                            elements.push(
+                              <g key={`slat-h-${i}`}>
+                                {/* Base color */}
+                                <polygon 
+                                  points={`${vTL.x},${vTL.y} ${vTR.x},${vTR.y} ${vBR.x},${vBR.y} ${vBL.x},${vBL.y}`}
+                                  fill={finalColor} 
+                                />
+                                {/* Fabric/texture if available */}
+                                {fabricImg && (
+                                  <polygon 
+                                    points={`${vTL.x},${vTL.y} ${vTR.x},${vTR.y} ${vBR.x},${vBR.y} ${vBL.x},${vBL.y}`}
+                                    fill={`url(#${patId})`} 
+                                  />
+                                )}
+                                {/* Slat shade/gradient overlay */}
+                                <polygon 
+                                  points={`${vTL.x},${vTL.y} ${vTR.x},${vTR.y} ${vBR.x},${vBR.y} ${vBL.x},${vBL.y}`}
+                                  fill={`url(#blinds-horiz-grad-${idPrefix})`} 
+                                />
+                                {/* Top and Bottom lines for realistic highlights */}
+                                <line 
+                                  x1={vTL.x} 
+                                  y1={vTL.y} 
+                                  x2={vTR.x} 
+                                  y2={vTR.y} 
+                                  stroke="#ffffff" 
+                                  strokeWidth="0.8" 
+                                  opacity="0.25" 
+                                />
+                                <line 
+                                  x1={vBL.x} 
+                                  y1={vBL.y} 
+                                  x2={vBR.x} 
+                                  y2={vBR.y} 
+                                  stroke="#000000" 
+                                  strokeWidth="1.2" 
+                                  opacity="0.35" 
+                                />
+                              </g>
+                            );
+                          }
+                          
+                          const useTape = area.useBlindsTape || hasAutoTape;
+                          if (useTape && topEdge && bottomEdge) {
+                            const topL = topEdge.p1.x < topEdge.p2.x ? topEdge.p1 : topEdge.p2;
+                            const topR = topEdge.p1.x < topEdge.p2.x ? topEdge.p2 : topEdge.p1;
+                            const botL = bottomEdge.p1.x < bottomEdge.p2.x ? bottomEdge.p1 : bottomEdge.p2;
+                            const botR = bottomEdge.p1.x < bottomEdge.p2.x ? bottomEdge.p2 : bottomEdge.p1;
+                            
+                            const tapeW = area.blindsTapeWidth !== undefined ? area.blindsTapeWidth : Math.round(slatSize * 0.8);
+                            
+                            // Synchronize the selected tape fabric at the item level across all areas
+                            let tapeArea = null;
+                            let tapeFabIndex = -1;
+                            let tapeFab = null;
+                            
+                            for (const a of item.areas || []) {
+                              const idx = a.fabrics?.findIndex((f: any) => 
+                                f.name?.toUpperCase().includes('TAPE FOR BLINDS') || 
+                                f.name?.toUpperCase().includes('TAPE') || 
+                                f.name?.includes('เทป') ||
+                                f.subType?.toUpperCase().includes('TAPE') ||
+                                f.subType?.includes('เทป')
+                              );
+                              if (idx !== undefined && idx !== -1) {
+                                tapeArea = a;
+                                tapeFabIndex = idx;
+                                tapeFab = a.fabrics[idx];
+                                break;
+                              }
+                            }
+                            
+                            let tapeStroke = area.blindsTapeColor || autoTapeColor;
+                            if (tapeFab) {
+                              const hasImg = !!(tapeFab.image || 
+                                (tapeFab.mainType === 'ผ้านอกระบบ (เฉพาะงานนี้)' && generalInfo && (generalInfo.customFabrics || []).some((f: any) => f.subType === tapeFab.subType && f.name === tapeFab.name && f.color === tapeFab.color && f.image)) || 
+                                (appDB?.curtainTypes && appDB.curtainTypes[tapeFab.mainType]?.[tapeFab.subType]?.[tapeFab.name]?.[tapeFab.color]));
+                              
+                              if (hasImg && tapeArea) {
+                                tapeStroke = `url(#pat-${idPrefix}-${item.id}-${tapeArea.id}-${tapeFabIndex})`;
+                              } else if (tapeFab.color) {
+                                if (tapeFab.color.startsWith('#')) {
+                                  tapeStroke = tapeFab.color;
+                                } else {
+                                  const lowerCol = tapeFab.color.toLowerCase();
+                                  if (lowerCol.includes('ครีม') || lowerCol.includes('cream')) tapeStroke = '#FFFDD0';
+                                  else if (lowerCol.includes('ขาว') || lowerCol.includes('white')) tapeStroke = '#F9F9F9';
+                                  else if (lowerCol.includes('เทา') || lowerCol.includes('gray') || lowerCol.includes('grey')) tapeStroke = '#9CA3AF';
+                                  else if (lowerCol.includes('น้ำตาล') || lowerCol.includes('brown')) tapeStroke = '#78350F';
+                                  else if (lowerCol.includes('เบจ') || lowerCol.includes('beige')) tapeStroke = '#F5F5DC';
+                                  else if (lowerCol.includes('ทอง') || lowerCol.includes('gold')) tapeStroke = '#FBBF24';
+                                  else if (lowerCol.includes('น้ำเงิน') || lowerCol.includes('blue')) tapeStroke = '#1E3A8A';
+                                  else if (lowerCol.includes('ชมพู') || lowerCol.includes('pink')) tapeStroke = '#F472B6';
+                                  else if (lowerCol.includes('เขียว') || lowerCol.includes('green')) tapeStroke = '#047857';
+                                  else if (lowerCol.includes('แดง') || lowerCol.includes('red')) tapeStroke = '#B91C1C';
+                                  else if (lowerCol.includes('ดำ') || lowerCol.includes('black') || lowerCol.includes('charcoal') || lowerCol.includes('เทาเข้ม') || lowerCol.includes('dark') || lowerCol.includes('เข้ม') || lowerCol.includes('t8') || lowerCol.includes('t5')) tapeStroke = '#1F2937';
+                                }
+                              }
+                            }
+                            
+                            const getTapeFractions = (w: number) => {
+                              const widthVal = w || 75; // fallback to 75
+                              if (widthVal <= 85) {
+                                return [0.25, 0.75];
+                              } else if (widthVal <= 140) {
+                                return [0.20, 0.50, 0.80];
+                              } else if (widthVal <= 195) {
+                                return [0.15, 0.38, 0.62, 0.85];
+                              } else if (widthVal <= 240) {
+                                return [0.12, 0.31, 0.50, 0.69, 0.88];
+                              } else {
+                                return [0.10, 0.26, 0.42, 0.58, 0.74, 0.90];
+                              }
+                            };
+                            
+                            const tapeFractions = getTapeFractions(parseFloat(area.width));
+                            
+                            tapeFractions.forEach((f, idx) => {
+                              const ptTopX = scaleX(topL.x + f * (topR.x - topL.x));
+                              const ptTopY = scaleY(topL.y + f * (topR.y - topL.y));
+                              const ptBotX = scaleX(botL.x + f * (botR.x - botL.x));
+                              const ptBotY = scaleY(botL.y + f * (botR.y - botL.y));
+                              
+                              const endX = ptTopX + (ptBotX - ptTopX) * mPct;
+                              const endY = ptTopY + (ptBotY - ptTopY) * mPct;
+                              
+                              elements.push(
+                                <g key={`tape-g-${idx}`}>
+                                  <line 
+                                    x1={ptTopX} 
+                                    y1={ptTopY} 
+                                    x2={endX} 
+                                    y2={endY} 
+                                    stroke={tapeStroke} 
+                                    strokeWidth={tapeW} 
+                                    opacity={0.85} 
+                                    strokeLinecap="butt" 
+                                  />
+                                  <line 
+                                    x1={ptTopX} 
+                                    y1={ptTopY} 
+                                    x2={endX} 
+                                    y2={endY} 
+                                    stroke="#000000" 
+                                    strokeWidth={tapeW} 
+                                    opacity={0.15} 
+                                    style={{ mixBlendMode: 'multiply' }} 
+                                    strokeLinecap="butt" 
+                                  />
+                                  <line 
+                                    x1={ptTopX} 
+                                    y1={ptTopY} 
+                                    x2={endX} 
+                                    y2={endY} 
+                                    stroke="#000000" 
+                                    strokeWidth="0.8" 
+                                    opacity="0.3" 
+                                    strokeDasharray="2 3" 
+                                    strokeLinecap="butt" 
+                                  />
+                                </g>
+                              );
+                            });
+                          }
+                        } else {
+                          const vertSlatW = slatSize;
+                          const activeWidth = w_px * mPct;
+                          const numSlats = Math.ceil(activeWidth / vertSlatW) + 1;
+                          
+                          const isSplit = action.includes('แยกกลาง');
+                          const isRight = action.includes('ขวา');
+                          
+                          const drawSlat = (centerX: number, key: string) => {
+                            const t = Math.max(0, Math.min(1, (centerX - minX_px) / (w_px || 1)));
+                            let angle = leftAngle * (1 - t) + rightAngle * t;
+                            if (area.autoTilt === false) {
+                              angle = area.blindsAngle !== undefined ? area.blindsAngle : 0;
+                            }
+                            
+                            const centerY = minY_px + h_px / 2;
+                            
+                            return (
+                              <g key={key} transform={`rotate(${angle}, ${centerX}, ${centerY})`}>
+                                {/* Base color */}
+                                <rect 
+                                  x={centerX - vertSlatW / 2} 
+                                  y={minY_px - h_px * 0.5} 
+                                  width={vertSlatW} 
+                                  height={h_px * 2} 
+                                  fill={finalColor} 
+                                />
+                                {/* Fabric/texture if available */}
+                                {fabricImg && (
+                                  <rect 
+                                    x={centerX - vertSlatW / 2} 
+                                    y={minY_px - h_px * 0.5} 
+                                    width={vertSlatW} 
+                                    height={h_px * 2} 
+                                    fill={`url(#${patId})`} 
+                                  />
+                                )}
+                                {/* Slat shade/gradient overlay */}
+                                <rect 
+                                  x={centerX - vertSlatW / 2} 
+                                  y={minY_px - h_px * 0.5} 
+                                  width={vertSlatW} 
+                                  height={h_px * 2} 
+                                  fill={`url(#blinds-vert-grad-${idPrefix})`} 
+                                />
+                                <line 
+                                  x1={centerX - vertSlatW / 2} 
+                                  y1={minY_px - h_px * 0.5} 
+                                  x2={centerX - vertSlatW / 2} 
+                                  y2={minY_px + h_px * 1.5} 
+                                  stroke="#000000" 
+                                  strokeWidth="1" 
+                                  opacity="0.4" 
+                                />
+                                <line 
+                                  x1={centerX - vertSlatW / 2 + 1} 
+                                  y1={minY_px - h_px * 0.5} 
+                                  x2={centerX - vertSlatW / 2 + 1} 
+                                  y2={minY_px + h_px * 1.5} 
+                                  stroke="#ffffff" 
+                                  strokeWidth="1" 
+                                  opacity="0.3" 
+                                />
+                              </g>
+                            );
+                          };
+                          
+                          if (isSplit) {
+                            const halfSlats = Math.ceil(numSlats / 2);
+                            for (let i = 0; i < halfSlats; i++) {
+                              const cxLeft = minX_px + (i + 0.5) * vertSlatW;
+                              if (cxLeft <= minX_px + w_px / 2) {
+                                elements.push(drawSlat(cxLeft, `slat-v-split-l-${i}`));
+                              }
+                              const cxRight = maxX_px - (i + 0.5) * vertSlatW;
+                              if (cxRight >= minX_px + w_px / 2) {
+                                elements.push(drawSlat(cxRight, `slat-v-split-r-${i}`));
+                              }
+                            }
+                          } else if (isRight) {
+                            for (let i = 0; i < numSlats; i++) {
+                              const cx = maxX_px - (i + 0.5) * vertSlatW;
+                              elements.push(drawSlat(cx, `slat-v-r-${i}`));
+                            }
+                          } else {
+                            for (let i = 0; i < numSlats; i++) {
+                              const cx = minX_px + (i + 0.5) * vertSlatW;
+                              elements.push(drawSlat(cx, `slat-v-l-${i}`));
+                            }
+                          }
+                        }
+                        
+                        return elements;
+                      };
+
+                      let maskElements: any[] = [];
+
+                      if (isBlindsStyle) {
+                        if (maskType === 'height') {
+                          const activeClipId = `active-clip-${idPrefix}-${item.id}-${area.id}`;
+                          maskElements.push(
+                            <g key="H" clipPath={`url(#${clipId})`}>
+                              <defs>
+                                <clipPath id={activeClipId}>
+                                  <rect x={minX_px - w_px * 0.5} y={minY_px - 100} width={w_px * 2} height={h_px * mPct + 100} />
+                                </clipPath>
+                              </defs>
+                              <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} />
+                              {fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} />}
+                              <g clipPath={`url(#${activeClipId})`}>
+                                {renderBlindsSlats()}
+                              </g>
+                            </g>
+                          );
+                        } else {
+                          if (action.includes('แยกกลาง')) {
+                            const activeClipId = `active-clip-${idPrefix}-${item.id}-${area.id}`;
+                            maskElements.push(
+                              <g key="W" clipPath={`url(#${clipId})`}>
+                                <defs>
+                                  <clipPath id={activeClipId}>
+                                    <rect x={minX_px - 100} y={minY_px - h_px * 0.5} width={w_px * mPct + 100} height={h_px * 2} />
+                                    <rect x={maxX_px - (w_px * mPct)} y={minY_px - h_px * 0.5} width={w_px * mPct + 100} height={h_px * 2} />
+                                  </clipPath>
+                                </defs>
+                                <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                                
+                                <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                                
+                                <g clipPath={`url(#${activeClipId})`}>
+                                  {renderBlindsSlats()}
+                                </g>
+                              </g>
+                            );
+                          } else if (action.includes('ขวา')) {
+                            const activeClipId = `active-clip-${idPrefix}-${item.id}-${area.id}`;
+                            maskElements.push(
+                              <g key="R" clipPath={`url(#${clipId})`}>
+                                <defs>
+                                  <clipPath id={activeClipId}>
+                                    <rect x={maxX_px - (w_px * mPct)} y={minY_px - h_px * 0.5} width={w_px * mPct + 100} height={h_px * 2} />
+                                  </clipPath>
+                                </defs>
+                                <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                                
+                                <g clipPath={`url(#${activeClipId})`}>
+                                  {renderBlindsSlats()}
+                                </g>
+                              </g>
+                            );
+                          } else {
+                            const activeClipId = `active-clip-${idPrefix}-${item.id}-${area.id}`;
+                            maskElements.push(
+                              <g key="L" clipPath={`url(#${clipId})`}>
+                                <defs>
+                                  <clipPath id={activeClipId}>
+                                    <rect x={minX_px - 100} y={minY_px - h_px * 0.5} width={w_px * mPct + 100} height={h_px * 2} />
+                                  </clipPath>
+                                </defs>
+                                <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                                
+                                <g clipPath={`url(#${activeClipId})`}>
+                                  {renderBlindsSlats()}
+                                </g>
+                              </g>
+                            );
+                          }
+                        }
+                      } else if (maskImgFallback) {
                         if (maskType === 'height') {
                           const maskIdH = `mask-h-${idPrefix}-${item.id}-${area.id}`;
                           maskElements.push(
@@ -643,7 +1289,47 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                           if (mode === 'draw' && isActive && isDrawing && isLast && !pointDrag) return null;
                           if (area.points.length < 2) return null;
                           return (
-                            <line key={`line-${idx}`} x1={`${p.x}%`} y1={`${p.y}%`} x2={`${nextP.x}%`} y2={`${nextP.y}%`} stroke={area.lineColor} strokeWidth={area.lineWidth / zoom} strokeDasharray={isActive && !pointDrag && isDrawing ? "4 4" : "0"} className={isActive && !pointDrag && isDrawing ? "animate-pulse" : ""} style={{ pointerEvents: 'none' }} />
+                            <g key={`edge-g-${idx}`} className="print:hidden" style={{ pointerEvents: 'auto' }}>
+                              {/* Visible thin line */}
+                              <line 
+                                x1={`${p.x}%`} 
+                                y1={`${p.y}%`} 
+                                x2={`${nextP.x}%`} 
+                                y2={`${nextP.y}%`} 
+                                stroke={area.lineColor} 
+                                strokeWidth={area.lineWidth / zoom} 
+                                strokeDasharray={isActive && !pointDrag && isDrawing ? "4 4" : "0"} 
+                                className={isActive && !pointDrag && isDrawing ? "animate-pulse" : ""} 
+                              />
+                              {/* Invisible thick line for easy interaction & right-click edge configuration */}
+                              <line 
+                                x1={`${p.x}%`} 
+                                y1={`${p.y}%`} 
+                                x2={`${nextP.x}%`} 
+                                y2={`${nextP.y}%`} 
+                                stroke="transparent" 
+                                strokeWidth={Math.max(12, area.lineWidth * 4) / zoom} 
+                                className="cursor-context-menu"
+                                style={{ cursor: 'context-menu' }}
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const rect = wrapperRef.current?.getBoundingClientRect();
+                                  if (rect) {
+                                    const x = e.clientX - rect.left;
+                                    const y = e.clientY - rect.top;
+                                    setEdgeMenu({
+                                      x,
+                                      y,
+                                      areaId: area.id,
+                                      segmentIndex: idx
+                                    });
+                                  }
+                                }}
+                              >
+                                <title>คลิกขวาเพื่อกำหนดประเภทของเส้นกรอบนี้ (ส่วนหัว/ส่วนล่าง/ซ้าย/ขวา)</title>
+                              </line>
+                            </g>
                           );
                         })}
                         {area.points.map((p: any, idx: number) => {
@@ -683,10 +1369,15 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                       edges.push({ p1, p2, midX: (p1.x+p2.x)/2, midY: (p1.y+p2.y)/2, dx: p2.x - p1.x, dy: p2.y - p1.y });
                     }
                     
-                    let tEdge = edges.reduce((prev, curr) => prev.midY < curr.midY ? prev : curr);
-                    let bEdge = edges.reduce((prev, curr) => prev.midY > curr.midY ? prev : curr);
-                    let lEdge = edges.reduce((prev, curr) => prev.midX < curr.midX ? prev : curr);
-                    let rEdge = edges.reduce((prev, curr) => prev.midX > curr.midX ? prev : curr);
+                    let tEdge = edges.find(e => area.edgeTypes?.[e.index] === 'top');
+                    let bEdge = edges.find(e => area.edgeTypes?.[e.index] === 'bottom');
+                    let lEdge = edges.find(e => area.edgeTypes?.[e.index] === 'left');
+                    let rEdge = edges.find(e => area.edgeTypes?.[e.index] === 'right');
+
+                    if (!tEdge && edges.length > 0) tEdge = edges.reduce((prev, curr) => prev.midY < curr.midY ? prev : curr);
+                    if (!bEdge && edges.length > 0) bEdge = edges.reduce((prev, curr) => prev.midY > curr.midY ? prev : curr);
+                    if (!lEdge && edges.length > 0) lEdge = edges.reduce((prev, curr) => prev.midX < curr.midX ? prev : curr);
+                    if (!rEdge && edges.length > 0) rEdge = edges.reduce((prev, curr) => prev.midX > curr.midX ? prev : curr);
 
                     const getVisualAngle = (edge: any, defaultAng: number) => {
                       if (!containerRef.current) return defaultAng;
@@ -771,7 +1462,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
       {item.image && showControls && (
         <div 
           style={{ position: 'fixed', left: panelPos.x, top: panelPos.y }}
-          className="w-[90vw] sm:w-[340px] max-w-[340px] z-[999999] bg-white/95 backdrop-blur-sm border border-gray-300 rounded shadow-2xl flex flex-col no-print cursor-default transition-shadow"
+          className="w-[90vw] sm:w-[340px] max-w-[340px] z-[100000000] bg-white/95 backdrop-blur-sm border border-gray-300 rounded shadow-2xl flex flex-col no-print cursor-default transition-shadow"
           onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
         >
           <div onMouseDown={onPanelMouseDown} onTouchStart={onPanelMouseDown} className="bg-gray-800 text-white px-3 py-2 flex justify-between items-center cursor-move rounded-t selection:bg-transparent">
@@ -847,6 +1538,135 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                         <span className="font-bold text-blue-700 w-8 text-right">{area.patternScale || 100}%</span>
                       </div>
                     </div>
+
+                     {/* Blinds configuration if style is Blinds/Adjustable (มู่ลี่ / ม่านปรับแสง) */}
+                    {(() => {
+                      const styleMain1 = area.styleMain1 || item.styleMain1 || item.styleMain || '';
+                      const isBlindsHoriz = styleMain1.includes('มู่ลี่');
+                      const isBlindsVert = styleMain1.includes('ม่านปรับแสง');
+                      const isBlindsStyle = isBlindsHoriz || isBlindsVert;
+                      if (!isBlindsStyle) return null;
+
+                      const slatSize = area.blindsSlatSize || (isBlindsHoriz ? 14 : 36);
+                      const hasAutoTape = !!(area.fabrics?.find((f: any) => 
+                        f.name?.toUpperCase().includes('TAPE FOR BLINDS') || 
+                        f.name?.toUpperCase().includes('TAPE') || 
+                        f.name?.includes('เทป') ||
+                        f.subType?.toUpperCase().includes('TAPE') ||
+                        f.subType?.includes('เทป')
+                      ) || item.areas?.flatMap((a: any) => a.fabrics || [])?.find((f: any) => 
+                        f.name?.toUpperCase().includes('TAPE FOR BLINDS') || 
+                        f.name?.toUpperCase().includes('TAPE') || 
+                        f.name?.includes('เทป') ||
+                        f.subType?.toUpperCase().includes('TAPE') ||
+                        f.subType?.includes('เทป')
+                      ));
+
+                      return (
+                        <div className="flex flex-col gap-1.5 border-t pt-1.5 mt-1 border-dashed border-indigo-100 bg-indigo-50/20 p-1.5 rounded">
+                          {/* Slat size selector S M L XL */}
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-gray-600">ขนาดซี่ใบมู่ลี่:</span>
+                            <div className="flex bg-gray-100 p-0.5 rounded border border-gray-200 gap-1">
+                              {['S', 'M', 'L', 'XL'].map((sizeOpt) => {
+                                let sizeVal = 14;
+                                if (isBlindsHoriz) {
+                                  if (sizeOpt === 'S') sizeVal = 10;
+                                  else if (sizeOpt === 'M') sizeVal = 14;
+                                  else if (sizeOpt === 'L') sizeVal = 25;
+                                  else if (sizeOpt === 'XL') sizeVal = 38;
+                                } else {
+                                  if (sizeOpt === 'S') sizeVal = 24;
+                                  else if (sizeOpt === 'M') sizeVal = 36;
+                                  else if (sizeOpt === 'L') sizeVal = 55;
+                                  else if (sizeOpt === 'XL') sizeVal = 80;
+                                }
+                                
+                                const currentSlatSize = area.blindsSlatSize || (isBlindsHoriz ? 14 : 36);
+                                const isActive = currentSlatSize === sizeVal;
+                                
+                                return (
+                                  <button
+                                    key={sizeOpt}
+                                    type="button"
+                                    onClick={() => handleUpdateArea(area.id, 'blindsSlatSize', sizeVal)}
+                                    className={`px-2.5 py-1 text-[10px] font-bold rounded transition-all ${isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:bg-white hover:text-gray-900'}`}
+                                  >
+                                    {sizeOpt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Slat auto-tilt / angle slider */}
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-gray-600">เอียงใบอัตโนมัติ:</span>
+                              <input 
+                                type="checkbox" 
+                                checked={area.autoTilt !== false} 
+                                onChange={(e)=>handleUpdateArea(area.id, 'autoTilt', e.target.checked)}
+                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                              />
+                            </div>
+                            {area.autoTilt === false && (
+                              <div className="flex items-center justify-between text-xs pl-2 border-l border-gray-200">
+                                <span className="text-gray-500">ปรับองศาเอียง:</span>
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    type="range" 
+                                    min="-60" 
+                                    max="60" 
+                                    step="1" 
+                                    value={area.blindsAngle || 0} 
+                                    onChange={(e)=>handleUpdateArea(area.id, 'blindsAngle', parseInt(e.target.value))}
+                                    className="w-16 h-1.5 bg-gray-200 rounded-lg cursor-pointer accent-indigo-600"
+                                  />
+                                  <span className="font-bold text-blue-700 w-8 text-right">{area.blindsAngle || 0}°</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Blinds decorative tape (horizontal blinds only) */}
+                          {isBlindsHoriz && (
+                            <div className="flex flex-col gap-1.5 border-t border-indigo-100 pt-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-gray-600">เปิดใช้เทปผ้า:</span>
+                                <input 
+                                  type="checkbox" 
+                                  checked={!!area.useBlindsTape || hasAutoTape} 
+                                  onChange={(e)=>handleUpdateArea(area.id, 'useBlindsTape', e.target.checked)}
+                                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                                />
+                              </div>
+                              {(area.useBlindsTape || hasAutoTape) && (
+                                <>
+                                  <div className="flex items-center justify-between text-xs pl-2 border-l border-gray-200">
+                                    <span className="text-gray-500 text-[10px]">ขนาดเทปผ้า:</span>
+                                    <div className="flex items-center gap-2">
+                                      <input 
+                                        type="range" 
+                                        min="4" 
+                                        max="40" 
+                                        step="1" 
+                                        value={area.blindsTapeWidth !== undefined ? area.blindsTapeWidth : Math.round(slatSize * 0.8)} 
+                                        onChange={(e)=>handleUpdateArea(area.id, 'blindsTapeWidth', parseInt(e.target.value))}
+                                        className="w-16 h-1 bg-gray-200 rounded-lg cursor-pointer accent-indigo-600"
+                                      />
+                                      <span className="font-bold text-blue-700 text-[10px] w-6 text-right">
+                                        {area.blindsTapeWidth !== undefined ? area.blindsTapeWidth : Math.round(slatSize * 0.8)}px
+                                      </span>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex flex-wrap gap-2 items-center text-xs border-t pt-2 mt-1 justify-between">
@@ -863,6 +1683,55 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
           </div>
         </div>
       )}
+
+      {/* Floating edge-role right-click context menu */}
+      {edgeMenu && (() => {
+        const area = item.areas.find((a: any) => a.id === edgeMenu.areaId);
+        if (!area) return null;
+        const currentRole = area.edgeTypes?.[edgeMenu.segmentIndex] || null;
+        
+        return (
+          <div 
+            style={{ 
+              position: 'absolute', 
+              left: edgeMenu.x, 
+              top: edgeMenu.y,
+              zIndex: 100000005
+            }}
+            className="bg-white border border-gray-300 rounded-lg shadow-2xl py-1 w-52 no-print cursor-default select-none animate-in fade-in zoom-in-95 duration-100"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 bg-gray-50">
+              กำหนดประเภทเส้นกรอบ
+            </div>
+            
+            {[
+              { type: 'top', label: 'ส่วนหัว (Top Edge)', desc: 'กำหนดองศาด้านบนและตำแหน่งป้าย', icon: '🔝', color: 'text-sky-600' },
+              { type: 'bottom', label: 'ส่วนล่าง (Bottom Edge)', desc: 'กำหนดองศาด้านล่างและตำแหน่งป้าย', icon: '🔜', color: 'text-emerald-600' },
+              { type: 'left', label: 'ส่วนซ้าย (Left Edge)', desc: 'กำหนดตำแหน่งป้ายความสูงซ้าย', icon: '⬅️', color: 'text-purple-600' },
+              { type: 'right', label: 'ส่วนขวา (Right Edge)', desc: 'กำหนดตำแหน่งป้ายความสูงขวา', icon: '➡️', color: 'text-amber-600' },
+              { type: null, label: 'ทั่วไป (Normal/Reset)', desc: 'ใช้ค่าคำนวณอัตโนมัติ', icon: '🔄', color: 'text-gray-500' }
+            ].map((opt) => {
+              const isSel = currentRole === opt.type;
+              return (
+                <button
+                  key={opt.type || 'reset'}
+                  onClick={() => handleSetEdgeType(edgeMenu.areaId, edgeMenu.segmentIndex, opt.type as any)}
+                  className={`w-full text-left px-3 py-1.5 hover:bg-gray-50 flex flex-col transition-colors ${isSel ? 'bg-indigo-50/70 border-l-2 border-indigo-500' : ''}`}
+                >
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-700">
+                    <span className={opt.color}>{opt.icon}</span>
+                    <span className={isSel ? 'text-indigo-700' : ''}>{opt.label}</span>
+                    {isSel && <span className="ml-auto text-[8px] bg-indigo-600 text-white px-1 py-0.2 rounded font-bold">เลือกอยู่</span>}
+                  </div>
+                  <span className="text-[9px] text-gray-400 pl-5 leading-tight">{opt.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 });
