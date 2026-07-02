@@ -503,6 +503,31 @@ const App: React.FC = () => {
           .print-content-wrapper { width: 100% !important; max-width: 277mm !important; }
           .whitespace-pre-wrap { white-space: pre-wrap !important; word-break: break-word !important; }
           select { display: none !important; }
+          
+          /* Custom CSS rules to perfectly contain the image and prevent cutoff/overflow in print/PDF */
+          .print-fit-container {
+            width: auto !important;
+            height: auto !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            display: inline-block !important;
+            position: relative !important;
+          }
+          .print-fit-container img {
+            position: relative !important;
+            width: auto !important;
+            height: auto !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            display: block !important;
+          }
+          .print-fit-container svg {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+          }
         }
       `}</style>
 
@@ -641,7 +666,7 @@ const App: React.FC = () => {
                     <div className="w-full lg:w-[70%] print:w-[70%] min-h-[400px] h-[50vh] sm:h-[60vh] lg:h-full print:h-full border-b lg:border-b-0 print:border-b-0 lg:border-r print:border-r border-gray-300 flex flex-col bg-white relative z-20">
                       
                       <div className="flex-1 w-full border-b border-gray-300 flex flex-col relative bg-gray-100 shrink-0 overflow-hidden">
-                        <ImageAreaEditor item={item} appDB={appDB} handleItemChange={handleItemChange} setDialog={setDialog} idPrefix={`print-${index}`} />
+                        <ImageAreaEditor item={item} appDB={appDB} handleItemChange={handleItemChange} setDialog={setDialog} idPrefix={`print-${index}`} generalInfo={generalInfo} />
                       </div>
                       
                       <div className="h-[25%] lg:h-[30%] print:h-[30%] min-h-[100px] w-full p-2 bg-gray-50 flex items-center overflow-x-auto">

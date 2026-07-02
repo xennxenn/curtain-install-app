@@ -9,6 +9,7 @@ interface ImageAreaEditorProps {
   handleItemChange: (id: string, field: string, value: any) => void;
   setDialog: (dialog: any) => void;
   idPrefix?: string;
+  generalInfo?: any;
 }
 
 export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({ 
@@ -16,7 +17,8 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
   appDB, 
   handleItemChange, 
   setDialog, 
-  idPrefix = 'editor' 
+  idPrefix = 'editor',
+  generalInfo
 }) => {
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -337,9 +339,10 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                       position: 'relative',
                       flexShrink: 0,
                       width: containerStyle.width,
-                      height: containerStyle.height
-                  }}
-                  className="shadow-sm"
+                      height: containerStyle.height,
+                      '--aspect-ratio': imgNativeSize ? `${imgNativeSize.w} / ${imgNativeSize.h}` : 'auto'
+                  } as React.CSSProperties}
+                  className="shadow-sm print-fit-container"
               >
                 <img 
                     ref={imgRef}
@@ -354,29 +357,78 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                     referrerPolicy="no-referrer"
                 />
                 
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ top: 0, left: 0 }}>
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800} ${containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600}`} style={{ top: 0, left: 0 }}>
                   <defs>
+                    <filter id={`alpha-to-white-${idPrefix}`}>
+                      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0" />
+                      <feComponentTransfer>
+                        <feFuncA type="linear" slope="5" />
+                      </feComponentTransfer>
+                    </filter>
                     {item.areas.map((area: any) => {
                         const clipId = `clip-${idPrefix}-${item.id}-${area.id}`;
+                        const patId = `pat-${idPrefix}-${item.id}-${area.id}`;
+                        
+                        const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
+                        const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
+
+                        const fab1 = area.fabrics?.[0];
+                        let fabricImg = null;
+                        if (fab1) {
+                          if (fab1.image) {
+                            fabricImg = fab1.image;
+                          } else if (fab1.mainType === 'ผ้านอกระบบ (เฉพาะงานนี้)' && generalInfo) {
+                            fabricImg = (generalInfo.customFabrics || []).find((f: any) => f.subType === fab1.subType && f.name === fab1.name && f.color === fab1.color)?.image;
+                          } else if (appDB?.curtainTypes) {
+                            fabricImg = appDB.curtainTypes[fab1.mainType]?.[fab1.subType]?.[fab1.name]?.[fab1.color];
+                          }
+                        }
+
+                        const styleMain1 = area.styleMain1 || item.styleMain1 || item.styleMain || '';
+                        const isBlinds = styleMain1.includes('มู่ลี่') || styleMain1.includes('ม่านปรับแสง');
+                        const isRollerBlind = styleMain1.includes('ม่านม้วน');
+                        const patternScale = (area.patternScale || 100) / 100;
+                        const patSize = (isRollerBlind ? (80 / 50) : 80) * patternScale;
+
                         return (
-                          <clipPath key={clipId} id={clipId}>
-                            <polygon points={area.points.map((p: any) => `${p.x},${p.y}`).join(' ')} />
-                          </clipPath>
-                        )
+                          <React.Fragment key={area.id}>
+                            <clipPath id={clipId}>
+                              <polygon points={area.points.map((p: any) => `${(p.x * pixelW) / 100},${(p.y * pixelH) / 100}`).join(' ')} />
+                            </clipPath>
+                            {fabricImg && (
+                              <pattern id={patId} patternUnits="userSpaceOnUse" width={patSize} height={patSize}>
+                                <image href={optImg(fabricImg, 300)} x="-0.5" y="-0.5" width={patSize + 1} height={patSize + 1} preserveAspectRatio="none" />
+                              </pattern>
+                            )}
+                          </React.Fragment>
+                        );
                       })}
                     </defs>
 
                     {item.areas.map((area: any, idx: number) => {
                       if (area.points.length < 3) return null;
+                      const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
+                      const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
+                      
+                      const scaleX = (x: number) => (x * pixelW) / 100;
+                      const scaleY = (y: number) => (y * pixelH) / 100;
+
                       const minX = Math.min(...area.points.map((p: any)=>p.x));
                       const maxX = Math.max(...area.points.map((p: any)=>p.x));
                       const minY = Math.min(...area.points.map((p: any)=>p.y));
                       const maxY = Math.max(...area.points.map((p: any)=>p.y));
-                      const w = maxX - minX;
-                      const h = maxY - minY;
+                      
+                      const minX_px = scaleX(minX);
+                      const maxX_px = scaleX(maxX);
+                      const minY_px = scaleY(minY);
+                      const maxY_px = scaleY(maxY);
+                      const w_px = maxX_px - minX_px;
+                      const h_px = maxY_px - minY_px;
+
                       const clipId = `clip-${idPrefix}-${item.id}-${area.id}`;
                       
                       const styleMain1 = area.styleMain1 || item.styleMain1 || item.styleMain || '';
+                      const isBlinds = styleMain1.includes('มู่ลี่') || styleMain1.includes('ม่านปรับแสง');
                       const autoMaskType = styleMain1.match(/ม่านม้วน|ม่านพับ|มู่ลี่|ม่านปรับแสง/) ? 'height' : 'width';
                       const maskType = area.maskType || autoMaskType;
                       const mPct = (area.maskPct || 20) / 100;
@@ -388,85 +440,176 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                       let maskElements: any[] = [];
                       
                       const dist = (p1: any, p2: any) => Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+
+                      // Find the first fabric of the area to dye/texture the mask folds
+                      const fab1 = area.fabrics?.[0];
+                      let fabricColor = '#D1D5DB'; 
+                      let fabricImg = null;
+
+                      if (fab1) {
+                        if (fab1.image) {
+                          fabricImg = fab1.image;
+                        } else if (fab1.mainType === 'ผ้านอกระบบ (เฉพาะงานนี้)' && generalInfo) {
+                          fabricImg = (generalInfo.customFabrics || []).find((f: any) => f.subType === fab1.subType && f.name === fab1.name && f.color === fab1.color)?.image;
+                        } else if (appDB?.curtainTypes) {
+                          fabricImg = appDB.curtainTypes[fab1.mainType]?.[fab1.subType]?.[fab1.name]?.[fab1.color];
+                        }
+
+                        if (fab1.color) {
+                          if (fab1.color.startsWith('#')) {
+                            fabricColor = fab1.color;
+                          } else {
+                            const lowerCol = fab1.color.toLowerCase();
+                            if (lowerCol.includes('ครีม') || lowerCol.includes('cream')) fabricColor = '#FFFDD0';
+                            else if (lowerCol.includes('ขาว') || lowerCol.includes('white')) fabricColor = '#F9F9F9';
+                            else if (lowerCol.includes('เทา') || lowerCol.includes('gray') || lowerCol.includes('grey')) fabricColor = '#9CA3AF';
+                            else if (lowerCol.includes('น้ำตาล') || lowerCol.includes('brown')) fabricColor = '#78350F';
+                            else if (lowerCol.includes('เบจ') || lowerCol.includes('beige')) fabricColor = '#F5F5DC';
+                            else if (lowerCol.includes('ทอง') || lowerCol.includes('gold')) fabricColor = '#FBBF24';
+                            else if (lowerCol.includes('น้ำเงิน') || lowerCol.includes('blue')) fabricColor = '#1E3A8A';
+                            else if (lowerCol.includes('ชมพู') || lowerCol.includes('pink')) fabricColor = '#F472B6';
+                            else if (lowerCol.includes('เขียว') || lowerCol.includes('green')) fabricColor = '#047857';
+                            else if (lowerCol.includes('แดง') || lowerCol.includes('red')) fabricColor = '#B91C1C';
+                            else fabricColor = '#E5E7EB';
+                          }
+                        }
+                      }
+
+                      const finalColor = fab1 ? fabricColor : area.lineColor;
+                      const patId = `pat-${idPrefix}-${item.id}-${area.id}`;
                       
                       if (maskImgFallback) {
                         if (maskType === 'height') {
-                          let isQuad = area.points.length === 4;
-                          let TL: any, TR: any, BL: any, BR: any;
-                          if (isQuad) {
-                            let sortedY = [...area.points].sort((a, b) => a.y - b.y);
-                            let top2 = sortedY.slice(0, 2).sort((a, b) => a.x - b.x);
-                            let bot2 = sortedY.slice(2, 4).sort((a, b) => a.x - b.x);
-                            TL = top2[0]; TR = top2[1]; BL = bot2[0]; BR = bot2[1];
-                          } else {
-                            TL = {x: minX, y: minY}; TR = {x: maxX, y: minY};
-                            BL = {x: minX, y: maxY}; BR = {x: maxX, y: maxY};
-                          }
-
-                          let dropL = { x: TL.x + (BL.x - TL.x) * mPct, y: TL.y + (BL.y - TL.y) * mPct };
-                          let dropR = { x: TR.x + (BR.x - TR.x) * mPct, y: TR.y + (BR.y - TR.y) * mPct };
-
-                          let clipPoly = `${TL.x},${TL.y} ${TR.x},${TR.y} ${dropR.x},${dropR.y} ${dropL.x},${dropL.y}`;
-                          let clipIdAct = `${clipId}-height-act`;
-
-                          let W = Math.max(0.1, dist(TL, TR));
-                          let H = Math.max(0.1, dist(TL, dropL));
-
-                          let u_x = (TR.x - TL.x) / W;
-                          let u_y = (TR.y - TL.y) / W;
-                          let v_x = (dropL.x - TL.x) / H;
-                          let v_y = (dropL.y - TL.y) / H;
-
-                          let D = u_x * v_y - u_y * v_x;
-                          let imgW = W;
-                          let imgH = H;
-
-                          if (Math.abs(D) > 1e-6) {
-                            let dx = dropR.x - TL.x;
-                            let dy = dropR.y - TL.y;
-                            let x_R = (dx * v_y - dy * v_x) / D;
-                            let y_R = (u_x * dy - u_y * dx) / D;
-                            imgW = Math.max(W, x_R);
-                            imgH = Math.max(H, y_R);
-                          }
-
+                          const maskIdH = `mask-h-${idPrefix}-${item.id}-${area.id}`;
                           maskElements.push(
-                            <React.Fragment key="T">
-                              <clipPath id={clipIdAct}><polygon points={clipPoly} /></clipPath>
-                              <g clipPath={`url(#${clipIdAct})`}>
+                            <g key="H" clipPath={`url(#${clipId})`}>
+                              <mask id={maskIdH} mask-type="alpha" style={{ maskType: 'alpha' }}>
                                 <image 
                                   href={optImg(maskImgFallback, 800)} 
-                                  x="0" y="0" 
-                                  width={imgW} height={imgH} 
+                                  x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} 
                                   preserveAspectRatio="none" 
-                                  opacity={maskOpacity}
-                                  transform={area.points.length === 4 ? `matrix(${u_x} ${u_y} ${v_x} ${v_y} ${TL.x} ${TL.y})` : `translate(${TL.x}, ${TL.y})`}
+                                  filter={`url(#alpha-to-white-${idPrefix})`}
+                                  style={{ filter: 'brightness(0) invert(1)' }}
                                 />
+                              </mask>
+                              {/* Solid background/sheer base layer to fill transparent gaps/mesh at 0.6 opacity */}
+                              {!isBlinds && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} opacity={0.6} />}
+                              {!isBlinds && fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} opacity={0.6} />}
+
+                              {/* Masked full opacity fabric layer */}
+                              <g mask={`url(#${maskIdH})`}>
+                                <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} />
+                                {fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} />}
                               </g>
-                            </React.Fragment>
+                              <image 
+                                href={optImg(maskImgFallback, 800)} 
+                                x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} 
+                                preserveAspectRatio="none" 
+                                opacity={maskOpacity} 
+                                style={{ mixBlendMode: 'multiply' }} 
+                              />
+                              {styleMain1.includes('มู่ลี่') && (
+                                <image 
+                                  href={optImg(maskImgFallback, 800)} 
+                                  x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} 
+                                  preserveAspectRatio="none" 
+                                  opacity={0.15} 
+                                  style={{ mixBlendMode: 'screen' }} 
+                                />
+                              )}
+                            </g>
                           );
                         } else {
                           if (action.includes('แยกกลาง')) {
                             const leftImg = masks['รวบซ้าย'] || maskImgFallback;
                             const rightImg = masks['รวบขวา'] || maskImgFallback;
+                            const maskIdL = `mask-w-l-${idPrefix}-${item.id}-${area.id}`;
+                            const maskIdR = `mask-w-r-${idPrefix}-${item.id}-${area.id}`;
                             maskElements.push(
                               <g key="W" clipPath={`url(#${clipId})`}>
-                                <image href={optImg(leftImg, 800)} x={minX} y={minY} width={w * mPct} height={h} preserveAspectRatio="none" opacity={maskOpacity} />
-                                <image href={optImg(rightImg, 800)} x={maxX - (w * mPct)} y={minY} width={w * mPct} height={h} preserveAspectRatio="none" opacity={maskOpacity} />
+                                <mask id={maskIdL} mask-type="alpha" style={{ maskType: 'alpha' }}>
+                                  <image 
+                                    href={optImg(leftImg, 800)} 
+                                    x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} 
+                                    preserveAspectRatio="none" 
+                                    filter={`url(#alpha-to-white-${idPrefix})`} 
+                                    style={{ filter: 'brightness(0) invert(1)' }}
+                                  />
+                                </mask>
+                                <g mask={`url(#${maskIdL})`}>
+                                  <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                  {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                                </g>
+                                <image href={optImg(leftImg, 800)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                {styleMain1.includes('มู่ลี่') && (
+                                  <image href={optImg(leftImg, 800)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                )}
+
+                                <mask id={maskIdR} mask-type="alpha" style={{ maskType: 'alpha' }}>
+                                  <image 
+                                    href={optImg(rightImg, 800)} 
+                                    x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} 
+                                    preserveAspectRatio="none" 
+                                    filter={`url(#alpha-to-white-${idPrefix})`} 
+                                    style={{ filter: 'brightness(0) invert(1)' }}
+                                  />
+                                </mask>
+                                <g mask={`url(#${maskIdR})`}>
+                                  <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                  {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                                </g>
+                                <image href={optImg(rightImg, 800)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                {styleMain1.includes('มู่ลี่') && (
+                                  <image href={optImg(rightImg, 800)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                )}
                               </g>
                             );
                           } else if (action.includes('ขวา')) {
                             const rightImg = masks['รวบขวา'] || masks[action] || maskImgFallback;
+                            const maskIdR = `mask-w-r-${idPrefix}-${item.id}-${area.id}`;
                             maskElements.push(
                               <g key="R" clipPath={`url(#${clipId})`}>
-                                <image href={optImg(rightImg, 800)} x={maxX - (w * mPct)} y={minY} width={w * mPct} height={h} preserveAspectRatio="none" opacity={maskOpacity} />
+                                <mask id={maskIdR} mask-type="alpha" style={{ maskType: 'alpha' }}>
+                                  <image 
+                                    href={optImg(rightImg, 800)} 
+                                    x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} 
+                                    preserveAspectRatio="none" 
+                                    filter={`url(#alpha-to-white-${idPrefix})`} 
+                                    style={{ filter: 'brightness(0) invert(1)' }}
+                                  />
+                                </mask>
+                                <g mask={`url(#${maskIdR})`}>
+                                  <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                  {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                                </g>
+                                <image href={optImg(rightImg, 800)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                {styleMain1.includes('มู่ลี่') && (
+                                  <image href={optImg(rightImg, 800)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                )}
                               </g>
                             );
                           } else {
                             const leftImg = masks['รวบซ้าย'] || masks[action] || maskImgFallback;
+                            const maskIdL = `mask-w-l-${idPrefix}-${item.id}-${area.id}`;
                             maskElements.push(
                               <g key="L" clipPath={`url(#${clipId})`}>
-                                <image href={optImg(leftImg, 800)} x={minX} y={minY} width={w * mPct} height={h} preserveAspectRatio="none" opacity={maskOpacity} />
+                                <mask id={maskIdL} mask-type="alpha" style={{ maskType: 'alpha' }}>
+                                  <image 
+                                    href={optImg(leftImg, 800)} 
+                                    x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} 
+                                    preserveAspectRatio="none" 
+                                    filter={`url(#alpha-to-white-${idPrefix})`} 
+                                    style={{ filter: 'brightness(0) invert(1)' }}
+                                  />
+                                </mask>
+                                <g mask={`url(#${maskIdL})`}>
+                                  <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                  {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                                </g>
+                                <image href={optImg(leftImg, 800)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                {styleMain1.includes('มู่ลี่') && (
+                                  <image href={optImg(leftImg, 800)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                )}
                               </g>
                             );
                           }
@@ -475,14 +618,18 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
 
                       return (
                         <g key={`fill-group-${area.id}`}>
-                          <polygon points={area.points.map((p: any) => `${p.x},${p.y}`).join(' ')} fill={area.lineColor} fillOpacity={0.15} stroke="none" />
+                          <polygon points={area.points.map((p: any) => `${(p.x * pixelW) / 100},${(p.y * pixelH) / 100}`).join(' ')} fill="none" stroke="none" />
                           {maskElements}
                         </g>
                       );
                     })}
-                    {mode === 'draw' && activeAreaId && isDrawing && !pointDrag && cursorPos && activeArea && activeArea.points.length > 0 && (
-                      <polygon points={[...activeArea.points, cursorPos].map(p => `${p.x},${p.y}`).join(' ')} fill={activeArea.lineColor} fillOpacity={0.1} stroke="none" />
-                    )}
+                    {mode === 'draw' && activeAreaId && isDrawing && !pointDrag && cursorPos && activeArea && activeArea.points.length > 0 && (() => {
+                      const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
+                      const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
+                      return (
+                        <polygon points={[...activeArea.points, cursorPos].map(p => `${(p.x * pixelW) / 100},${(p.y * pixelH) / 100}`).join(' ')} fill={activeArea.lineColor} fillOpacity={0.1} stroke="none" />
+                      );
+                    })()}
                 </svg>
 
                 <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ top: 0, left: 0 }}>
@@ -506,7 +653,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                           const circleRadius = isHighlight ? 8/zoom : 4/zoom;
                           
                           return (
-                            <g key={idx} className="cursor-move" style={{ pointerEvents: 'auto' }}>
+                            <g key={idx} className="cursor-move print:hidden" style={{ pointerEvents: 'auto' }}>
                               <circle cx={`${p.x}%`} cy={`${p.y}%`} r={circleRadius} fill={isHighlight ? "#FFD700" : "white"} stroke={area.lineColor} strokeWidth={isHighlight ? 3/zoom : 2/zoom} onMouseDown={(e) => handlePointMouseDown(e, area.id, idx)} onTouchStart={(e) => handlePointMouseDown(e, area.id, idx)} className={isHighlight ? "animate-pulse" : ""} />
                             </g>
                           );
@@ -684,6 +831,21 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                       <label className="flex items-center gap-1"><span className="font-bold text-gray-600">ความทึบ:</span>
                         <select value={area.maskOpacity ?? 87} onChange={(e)=>handleUpdateArea(area.id, 'maskOpacity', parseInt(e.target.value))} className="border rounded bg-white px-1 py-0.5 outline-none text-blue-700 font-bold h-7">{[10, 20, 30, 40, 50, 60, 70, 80, 87, 90, 100].map(sz => <option key={sz} value={sz}>{sz}%</option>)}</select>
                       </label>
+                    </div>
+                    <div className="flex items-center justify-between text-xs mt-1.5 border-t pt-1.5 border-indigo-100">
+                      <span className="font-bold text-gray-600">สเกลลายผ้า:</span>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="range" 
+                          min="10" 
+                          max="200" 
+                          step="10" 
+                          value={area.patternScale || 100} 
+                          onChange={(e)=>handleUpdateArea(area.id, 'patternScale', parseInt(e.target.value))}
+                          className="w-24 h-1.5 bg-gray-200 rounded-lg cursor-pointer accent-indigo-600"
+                        />
+                        <span className="font-bold text-blue-700 w-8 text-right">{area.patternScale || 100}%</span>
+                      </div>
                     </div>
                   </div>
 
