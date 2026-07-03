@@ -119,6 +119,14 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
   }, [item.image, mode]);
 
   useEffect(() => {
+    if (item.image && imgRef.current) {
+      if (imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+        setImgNativeSize({ w: imgRef.current.naturalWidth, h: imgRef.current.naturalHeight });
+      }
+    }
+  }, [item.image]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isDrawing && activeAreaId) {
         handleItemChange(item.id, 'areas', item.areas.map((a: any) => a.id === activeAreaId ? { ...a, points: [] } : a));

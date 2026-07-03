@@ -317,15 +317,20 @@ const App: React.FC = () => {
   };
 
   const saveData = async () => {
-    if (!firebaseUser) return;
+    if (!firebaseUser) return null;
     setSaving(true); setSaveStatus('กำลังบันทึก...');
     try {
       const pId = currentProjectId || Date.now().toString();
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', pId), { generalInfo, items, updatedAt: new Date().toISOString(), owner: projectOwner || appUser.username });
       setCurrentProjectId(pId);
       setSaveStatus('บันทึกสำเร็จ!'); setTimeout(() => setSaveStatus(''), 3000);
-    } catch (err) { setSaveStatus('เกิดข้อผิดพลาด'); }
-    setSaving(false);
+      setSaving(false);
+      return pId;
+    } catch (err) { 
+      setSaveStatus('เกิดข้อผิดพลาด'); 
+      setSaving(false);
+      return null;
+    }
   };
 
   const isIOSDevice = () => {
@@ -370,10 +375,12 @@ const App: React.FC = () => {
     setTimeout(() => { document.title = originalTitle; }, 2000);
   };
 
-  const handleOpenInNewTabForPrint = () => {
-    const pId = currentProjectId || Date.now().toString();
-    const cleanUrl = window.location.origin + window.location.pathname + `?projectId=${pId}`;
-    window.open(cleanUrl, '_blank');
+  const handleOpenInNewTabForPrint = async () => {
+    const pId = await saveData();
+    if (pId) {
+      const cleanUrl = window.location.origin + window.location.pathname + `?projectId=${pId}`;
+      window.open(cleanUrl, '_blank');
+    }
     setShowIOSPrintModal(false);
   };
 
@@ -570,7 +577,7 @@ const App: React.FC = () => {
           
           /* Custom CSS rules to perfectly contain the image and prevent cutoff/overflow in print/PDF */
           .print-fit-container-fit {
-            width: auto !important;
+            width: 100% !important;
             height: auto !important;
             max-width: 100% !important;
             max-height: 100% !important;
@@ -579,7 +586,7 @@ const App: React.FC = () => {
             display: block !important;
           }
           .print-fit-container-fill {
-            width: auto !important;
+            width: 100% !important;
             height: auto !important;
             min-width: 100% !important;
             min-height: 100% !important;
@@ -612,7 +619,17 @@ const App: React.FC = () => {
         <div className="print-center-page w-full">
           <div className="print-content-wrapper w-full">
             <div className="mb-6 border-b-2 border-gray-800 pb-3 flex justify-between items-center avoid-break relative">
-              <button onClick={()=>{saveData(); setView('dashboard');}} className="absolute -left-12 md:-left-20 top-1/2 transform -translate-y-1/2 no-print bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full shadow-md transition-colors z-10"><ArrowLeft size={24}/></button>
+              <button 
+                onClick={async () => {
+                  if (saving) return;
+                  await saveData();
+                  setView('dashboard');
+                }} 
+                disabled={saving}
+                className={`absolute -left-12 md:-left-20 top-1/2 transform -translate-y-1/2 no-print p-2 rounded-full shadow-md transition-colors z-10 ${saving ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
+              >
+                <ArrowLeft size={24}/>
+              </button>
               <div className="w-1/3 text-left flex items-center gap-4">
                 <img src={logoSrc} alt="Logo" className="h-10 md:h-14 lg:h-16 object-contain" style={logoSrc.startsWith('data:') ? {} : { mixBlendMode: 'multiply', filter: 'contrast(1.1) brightness(1.1)' }} referrerPolicy="no-referrer" />
                 <div className="no-print">
@@ -626,11 +643,13 @@ const App: React.FC = () => {
                   <p className="text-gray-500 text-[10px]">{appUser.role === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : 'พนักงาน (User)'}</p>
                 </div>
                 <button 
-                  onClick={() => {
-                    saveData();
+                  onClick={async () => {
+                    if (saving) return;
+                    await saveData();
                     handleLogout();
                   }} 
-                  className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2 md:px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                  disabled={saving}
+                  className={`border px-2 md:px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm ${saving ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-red-50 hover:bg-red-100 text-red-600 border-red-200'}`}
                   title="บันทึกและออกจากระบบ"
                 >
                   <LogOut size={14}/>
