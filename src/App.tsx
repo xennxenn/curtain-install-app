@@ -569,16 +569,28 @@ const App: React.FC = () => {
           select { display: none !important; }
           
           /* Custom CSS rules to perfectly contain the image and prevent cutoff/overflow in print/PDF */
-          .print-fit-container {
-            width: 100% !important;
+          .print-fit-container-fit {
+            width: auto !important;
             height: auto !important;
-            aspect-ratio: var(--aspect-ratio) !important;
             max-width: 100% !important;
             max-height: 100% !important;
+            aspect-ratio: var(--aspect-ratio) !important;
             position: relative !important;
             display: block !important;
           }
-          .print-fit-container img {
+          .print-fit-container-fill {
+            width: auto !important;
+            height: auto !important;
+            min-width: 100% !important;
+            min-height: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            aspect-ratio: var(--aspect-ratio) !important;
+            position: relative !important;
+            display: block !important;
+          }
+          .print-fit-container-fit img,
+          .print-fit-container-fill img {
             position: absolute !important;
             inset: 0 !important;
             width: 100% !important;
@@ -586,7 +598,8 @@ const App: React.FC = () => {
             object-fit: fill !important;
             display: block !important;
           }
-          .print-fit-container svg {
+          .print-fit-container-fit svg,
+          .print-fit-container-fill svg {
             position: absolute !important;
             inset: 0 !important;
             width: 100% !important;

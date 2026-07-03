@@ -368,7 +368,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                       height: containerStyle.height,
                       '--aspect-ratio': imgNativeSize ? `${imgNativeSize.w} / ${imgNativeSize.h}` : 'auto'
                   } as React.CSSProperties}
-                  className="shadow-sm print-fit-container"
+                  className={`shadow-sm print-fit-container print-fit-container-${item.imageFit || 'fit'}`}
               >
                 <img 
                     ref={imgRef}
