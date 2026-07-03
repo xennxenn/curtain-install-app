@@ -602,7 +602,16 @@ const App: React.FC = () => {
             flex-grow: 0 !important;
             flex-shrink: 0 !important;
           }
-          .print-fit-container-fit img,
+          .print-fit-container-fit img {
+            position: relative !important;
+            inset: auto !important;
+            width: auto !important;
+            height: auto !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            object-fit: contain !important;
+            display: block !important;
+          }
           .print-fit-container-fill img {
             position: absolute !important;
             inset: 0 !important;
