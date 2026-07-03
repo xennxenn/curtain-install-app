@@ -383,7 +383,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                     referrerPolicy="no-referrer"
                 />
                 
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800} ${containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600}`} style={{ top: 0, left: 0 }}>
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800} ${containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600}`} preserveAspectRatio="none" style={{ top: 0, left: 0 }}>
                   <defs>
                     <filter id={`alpha-to-white-${idPrefix}`}>
                       <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0" />
@@ -1278,9 +1278,16 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                     })()}
                 </svg>
 
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ top: 0, left: 0 }}>
+                <svg 
+                  className="absolute inset-0 w-full h-full pointer-events-none" 
+                  viewBox={`0 0 ${containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800} ${containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600}`} 
+                  preserveAspectRatio="none" 
+                  style={{ top: 0, left: 0 }}
+                >
                   {item.areas.map((area: any) => {
                     const isActive = activeAreaId === area.id;
+                    const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
+                    const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
                     return (
                       <g key={area.id}>
                         {area.points.map((p: any, idx: number) => {
@@ -1289,13 +1296,13 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                           if (mode === 'draw' && isActive && isDrawing && isLast && !pointDrag) return null;
                           if (area.points.length < 2) return null;
                           return (
-                            <g key={`edge-g-${idx}`} className="print:hidden" style={{ pointerEvents: 'auto' }}>
+                            <g key={`edge-g-${idx}`} style={{ pointerEvents: 'auto' }}>
                               {/* Visible thin line */}
                               <line 
-                                x1={`${p.x}%`} 
-                                y1={`${p.y}%`} 
-                                x2={`${nextP.x}%`} 
-                                y2={`${nextP.y}%`} 
+                                x1={(p.x * pixelW) / 100} 
+                                y1={(p.y * pixelH) / 100} 
+                                x2={(nextP.x * pixelW) / 100} 
+                                y2={(nextP.y * pixelH) / 100} 
                                 stroke={area.lineColor} 
                                 strokeWidth={area.lineWidth / zoom} 
                                 strokeDasharray={isActive && !pointDrag && isDrawing ? "4 4" : "0"} 
@@ -1303,13 +1310,13 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                               />
                               {/* Invisible thick line for easy interaction & right-click edge configuration */}
                               <line 
-                                x1={`${p.x}%`} 
-                                y1={`${p.y}%`} 
-                                x2={`${nextP.x}%`} 
-                                y2={`${nextP.y}%`} 
+                                x1={(p.x * pixelW) / 100} 
+                                y1={(p.y * pixelH) / 100} 
+                                x2={(nextP.x * pixelW) / 100} 
+                                y2={(nextP.y * pixelH) / 100} 
                                 stroke="transparent" 
                                 strokeWidth={Math.max(12, area.lineWidth * 4) / zoom} 
-                                className="cursor-context-menu"
+                                className="cursor-context-menu print:hidden"
                                 style={{ cursor: 'context-menu' }}
                                 onContextMenu={(e) => {
                                   e.preventDefault();
@@ -1340,19 +1347,23 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                           
                           return (
                             <g key={idx} className="cursor-move print:hidden" style={{ pointerEvents: 'auto' }}>
-                              <circle cx={`${p.x}%`} cy={`${p.y}%`} r={circleRadius} fill={isHighlight ? "#FFD700" : "white"} stroke={area.lineColor} strokeWidth={isHighlight ? 3/zoom : 2/zoom} onMouseDown={(e) => handlePointMouseDown(e, area.id, idx)} onTouchStart={(e) => handlePointMouseDown(e, area.id, idx)} className={isHighlight ? "animate-pulse" : ""} />
+                              <circle cx={(p.x * pixelW) / 100} cy={(p.y * pixelH) / 100} r={circleRadius} fill={isHighlight ? "#FFD700" : "white"} stroke={area.lineColor} strokeWidth={isHighlight ? 3/zoom : 2/zoom} onMouseDown={(e) => handlePointMouseDown(e, area.id, idx)} onTouchStart={(e) => handlePointMouseDown(e, area.id, idx)} className={isHighlight ? "animate-pulse" : ""} />
                             </g>
                           );
                         })}
                       </g>
                     );
                   })}
-                  {mode === 'draw' && activeAreaId && isDrawing && !pointDrag && cursorPos && activeArea && activeArea.points.length > 0 && (
-                    <g style={{ pointerEvents: 'none' }}>
-                      <line x1={`${activeArea.points[activeArea.points.length - 1].x}%`} y1={`${activeArea.points[activeArea.points.length - 1].y}%`} x2={`${cursorPos.x}%`} y2={`${cursorPos.y}%`} stroke={activeArea.lineColor} strokeWidth={2/zoom} strokeDasharray="4 4" />
-                      <line x1={`${cursorPos.x}%`} y1={`${cursorPos.y}%`} x2={`${activeArea.points[0].x}%`} y2={`${activeArea.points[0].y}%`} stroke={activeArea.lineColor} strokeWidth={2/zoom} strokeDasharray="4 4" opacity="0.5" />
-                    </g>
-                  )}
+                  {mode === 'draw' && activeAreaId && isDrawing && !pointDrag && cursorPos && activeArea && activeArea.points.length > 0 && (() => {
+                    const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
+                    const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
+                    return (
+                      <g style={{ pointerEvents: 'none' }}>
+                        <line x1={(activeArea.points[activeArea.points.length - 1].x * pixelW) / 100} y1={(activeArea.points[activeArea.points.length - 1].y * pixelH) / 100} x2={(cursorPos.x * pixelW) / 100} y2={(cursorPos.y * pixelH) / 100} stroke={activeArea.lineColor} strokeWidth={2/zoom} strokeDasharray="4 4" />
+                        <line x1={(cursorPos.x * pixelW) / 100} y1={(cursorPos.y * pixelH) / 100} x2={(activeArea.points[0].x * pixelW) / 100} y2={(activeArea.points[0].y * pixelH) / 100} stroke={activeArea.lineColor} strokeWidth={2/zoom} strokeDasharray="4 4" opacity="0.5" />
+                      </g>
+                    );
+                  })()}
                 </svg>
 
                 {item.areas.map((area: any, idx: number) => {
@@ -1366,7 +1377,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                     for(let i=0; i<area.points.length; i++) {
                       let p1 = area.points[i];
                       let p2 = area.points[(i+1)%area.points.length];
-                      edges.push({ p1, p2, midX: (p1.x+p2.x)/2, midY: (p1.y+p2.y)/2, dx: p2.x - p1.x, dy: p2.y - p1.y });
+                      edges.push({ index: i, p1, p2, midX: (p1.x+p2.x)/2, midY: (p1.y+p2.y)/2, dx: p2.x - p1.x, dy: p2.y - p1.y });
                     }
                     
                     let tEdge = edges.find(e => area.edgeTypes?.[e.index] === 'top');
@@ -1401,6 +1412,12 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                   }
 
                   const lblSize = (area.labelSize || 14) / zoom;
+                  const wPos = area.wPos || 'top';
+                  const hPos = area.hPos || 'right';
+                  const wShift = wPos === 'top' ? -16 : 16;
+                  const hShift = hPos === 'left' 
+                    ? (hAng > 0 ? 16 : -16) 
+                    : (hAng > 0 ? -16 : 16);
                   
                   return (
                     <div key={`labels-${area.id}`} className="absolute inset-0 pointer-events-none">
@@ -1410,12 +1427,12 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                         </div>
                       )}
                       {area.width && (
-                        <div style={{ position: 'absolute', left: `${wMidX}%`, top: `${wMidY}%`, transform: `translate(-50%, -50%) rotate(${wAng}deg)`, color: area.labelColor || area.lineColor, fontSize: `${lblSize}px`, whiteSpace: 'nowrap' }} className="bg-white/95 px-2 py-0.5 rounded shadow-md border border-gray-300 font-bold z-10 text-center">
+                        <div style={{ position: 'absolute', left: `${wMidX}%`, top: `${wMidY}%`, transform: `translate(-50%, -50%) rotate(${wAng}deg) translateY(${wShift}px)`, color: area.labelColor || area.lineColor, fontSize: `${lblSize}px`, whiteSpace: 'nowrap' }} className="bg-white/95 px-2 py-0.5 rounded shadow-md border border-gray-300 font-bold z-10 text-center">
                           {area.width} ซม.
                         </div>
                       )}
                       {area.height && (
-                        <div style={{ position: 'absolute', left: `${hMidX}%`, top: `${hMidY}%`, transform: `translate(-50%, -50%) rotate(${hAng}deg)`, color: area.labelColor || area.lineColor, fontSize: `${lblSize}px`, whiteSpace: 'nowrap' }} className="bg-white/95 px-2 py-0.5 rounded shadow-md border border-gray-300 font-bold z-10 text-center">
+                        <div style={{ position: 'absolute', left: `${hMidX}%`, top: `${hMidY}%`, transform: `translate(-50%, -50%) rotate(${hAng}deg) translateY(${hShift}px)`, color: area.labelColor || area.lineColor, fontSize: `${lblSize}px`, whiteSpace: 'nowrap' }} className="bg-white/95 px-2 py-0.5 rounded shadow-md border border-gray-300 font-bold z-10 text-center">
                           {area.height} ซม.
                         </div>
                       )}

@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [showDBSettings, setShowDBSettings] = useState(false);
   const [showUserMgmt, setShowUserMgmt] = useState(false);
   const [showCustomFabricModal, setShowCustomFabricModal] = useState(false);
+  const [showIOSPrintModal, setShowIOSPrintModal] = useState(false);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [allAccounts, setAllAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
   
@@ -131,6 +132,29 @@ const App: React.FC = () => {
   useEffect(() => {
     if (firebaseUser && appUser && view === 'dashboard') loadProjectsList();
   }, [firebaseUser, appUser, view, loadProjectsList]);
+
+  useEffect(() => {
+    if (!firebaseUser || !appUser) return;
+    const loadAndOpenProjectFromUrl = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const projId = params.get('projectId') || params.get('project');
+      if (projId) {
+        try {
+          const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', projId));
+          if (docSnap.exists()) {
+            const projData = { id: docSnap.id, ...docSnap.data() };
+            handleEdit(projData);
+            // Clean up query param from browser bar so it doesn't reload edit screen if they refresh
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+        } catch (err) {
+          console.error("Url Load Project Error:", err);
+        }
+      }
+    };
+    loadAndOpenProjectFromUrl();
+  }, [firebaseUser, appUser]);
 
   useEffect(() => {
     if (view !== 'editor') return; 
@@ -304,13 +328,53 @@ const App: React.FC = () => {
     setSaving(false);
   };
 
-  const printDocument = () => window.print();
+  const isIOSDevice = () => {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  };
 
-  const handleSharePDF = () => {
+  const isInsideIframe = () => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  };
+
+  const printDocument = async () => {
+    if (isInsideIframe() && isIOSDevice()) {
+      await saveData();
+      setShowIOSPrintModal(true);
+      return;
+    }
+    try {
+      window.print();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSharePDF = async () => {
+    if (isInsideIframe() && isIOSDevice()) {
+      await saveData();
+      setShowIOSPrintModal(true);
+      return;
+    }
     const originalTitle = document.title;
     document.title = `ใบสรุปงานติดตั้งผ้าม่าน คุณ ${generalInfo.customerName || 'ลูกค้า'}`;
-    window.print();
+    try {
+      window.print();
+    } catch (e) {
+      console.error(e);
+    }
     setTimeout(() => { document.title = originalTitle; }, 2000);
+  };
+
+  const handleOpenInNewTabForPrint = () => {
+    const pId = currentProjectId || Date.now().toString();
+    const cleanUrl = window.location.origin + window.location.pathname + `?projectId=${pId}`;
+    window.open(cleanUrl, '_blank');
+    setShowIOSPrintModal(false);
   };
 
   const handleGeneralChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setGeneralInfo(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -874,6 +938,47 @@ const App: React.FC = () => {
         <button onClick={handleSharePDF} className="group relative bg-orange-500 hover:bg-orange-600 text-white rounded-full p-4 shadow-xl flex items-center justify-center transition-transform hover:scale-110 border-2 border-white w-14 h-14" title="แชร์เป็น PDF (แนวนอน)"><Share2 size={24} /><span className="absolute right-[110%] bg-orange-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity mr-2">แชร์ PDF</span></button>
         <button onClick={printDocument} className="group relative bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-xl flex items-center justify-center transition-transform hover:scale-110 border-2 border-white w-14 h-14" title="พิมพ์เอกสาร"><Printer size={24} /><span className="absolute right-[110%] bg-blue-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity mr-2">พิมพ์</span></button>
       </div>
+
+      {showIOSPrintModal && (
+        <div className="fixed inset-0 bg-black/70 z-[99999999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl p-6 text-center border border-gray-100 flex flex-col items-center">
+            <div className="bg-blue-50 p-4 rounded-full text-blue-600 mb-4 animate-bounce">
+              <Printer size={32} />
+            </div>
+            <h3 className="font-bold text-gray-800 text-lg mb-3">คำแนะนำการพิมพ์ / บันทึก PDF บน iPad & iPhone</h3>
+            <p className="text-gray-600 text-sm leading-relaxed mb-6 text-left">
+              เนื่องจากระบบความปลอดภัยของ iOS บน iPad/iPhone จะบล็อกหน้าต่างการสั่งพิมพ์เมื่อใช้งานผ่าน iFrame ของแอปจำลองนี้<br/><br/>
+              <span className="font-bold text-gray-800">วิธีการแก้ไขเพื่อให้พิมพ์และแชร์ได้ปกติ:</span><br/>
+              1. กดปุ่ม <span className="font-bold text-blue-600">"เปิดในแท็บใหม่"</span> ด้านล่าง<br/>
+              2. ระบบจะเปิดใบงานนี้บนเบราว์เซอร์หลักโดยตรง<br/>
+              3. กดปุ่มพิมพ์หรือแชร์ PDF จากในแท็บใหม่ได้ทันทีเลยครับ!
+            </p>
+            <div className="flex flex-col gap-2 w-full">
+              <button 
+                onClick={handleOpenInNewTabForPrint} 
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm shadow transition-colors flex items-center justify-center gap-2"
+              >
+                🌐 เปิดในแท็บใหม่เพื่อพิมพ์/แชร์
+              </button>
+              <button 
+                onClick={() => {
+                  setShowIOSPrintModal(false);
+                  try { window.print(); } catch (e) {}
+                }} 
+                className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold text-xs transition-colors"
+              >
+                ลองพิมพ์ในแท็บนี้ต่อไป
+              </button>
+              <button 
+                onClick={() => setShowIOSPrintModal(false)} 
+                className="w-full py-2 text-gray-400 hover:text-gray-500 font-bold text-xs transition-colors mt-1"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
