@@ -70,7 +70,8 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
       const rc = vw / vh;
       let finalW, finalH;
 
-      if (item.imageFit === 'fill') {
+      const currentFit = item.imageFit || 'fit';
+      if (currentFit === 'fill') {
           if (ri > rc) { finalH = vh; finalW = vh * ri; } 
           else { finalW = vw; finalH = vw / ri; }
       } else { 
@@ -342,11 +343,14 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
 
   const activeArea = item.areas.find((a: any) => a.id === activeAreaId);
 
+  const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
+  const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
+
   return (
     <div ref={wrapperRef} className="flex flex-col w-full h-full relative border-b md:border-b-0 print:border-b-0 border-gray-300 bg-white">
       <div 
         ref={viewportRef}
-        className={`relative w-full flex-grow overflow-hidden flex items-center justify-center ${item.imageFit === 'fit' ? 'bg-white' : 'bg-gray-100'} ${mode === 'pan' ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : (activeAreaId && isDrawing ? 'cursor-crosshair' : 'cursor-default')}`}
+        className={`relative w-full flex-grow overflow-hidden flex items-center justify-center ${(item.imageFit || 'fit') === 'fit' ? 'bg-white' : 'bg-gray-100'} ${mode === 'pan' ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : (activeAreaId && isDrawing ? 'cursor-crosshair' : 'cursor-default')}`}
         style={{ touchAction: 'none', clipPath: 'inset(0)', contain: 'paint' }}
         onMouseDown={handleMouseDown} onTouchStart={handleMouseDown}
         onMouseMove={handleMouseMove} onTouchMove={handleMouseMove}
@@ -374,7 +378,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                       flexShrink: 0,
                       width: containerStyle.width,
                       height: containerStyle.height,
-                      '--aspect-ratio': imgNativeSize ? `${imgNativeSize.w} / ${imgNativeSize.h}` : 'auto'
+                      '--aspect-ratio': imgNativeSize ? `${imgNativeSize.w} / ${imgNativeSize.h}` : (item.imageWidth && item.imageHeight ? `${item.imageWidth} / ${item.imageHeight}` : 'auto')
                   } as React.CSSProperties}
                   className={`shadow-sm print-fit-container print-fit-container-${item.imageFit || 'fit'}`}
               >
@@ -391,7 +395,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                     referrerPolicy="no-referrer"
                 />
                 
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800} ${containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600}`} preserveAspectRatio="none" style={{ top: 0, left: 0 }}>
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${pixelW} ${pixelH}`} preserveAspectRatio="none" style={{ top: 0, left: 0 }}>
                   <defs>
                     <filter id={`alpha-to-white-${idPrefix}`}>
                       <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0" />
@@ -416,8 +420,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                         const clipId = `clip-${idPrefix}-${item.id}-${area.id}`;
                         const patId = `pat-${idPrefix}-${item.id}-${area.id}`;
                         
-                        const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
-                        const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
+                        // Uses outer pixelW and pixelH from component scope
 
                         // Find first fabric with fallback to the first area in the item that has fabrics
                         let fab1 = area.fabrics?.[0];
@@ -567,8 +570,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
 
                     {item.areas.map((area: any, idx: number) => {
                       if (area.points.length < 3) return null;
-                      const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
-                      const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
+                      // Uses outer pixelW and pixelH from component scope
                       
                       const scaleX = (x: number) => (x * pixelW) / 100;
                       const scaleY = (y: number) => (y * pixelH) / 100;
@@ -1278,8 +1280,6 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                       );
                     })}
                     {mode === 'draw' && activeAreaId && isDrawing && !pointDrag && cursorPos && activeArea && activeArea.points.length > 0 && (() => {
-                      const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
-                      const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
                       return (
                         <polygon points={[...activeArea.points, cursorPos].map(p => `${(p.x * pixelW) / 100},${(p.y * pixelH) / 100}`).join(' ')} fill={activeArea.lineColor} fillOpacity={0.1} stroke="none" />
                       );
@@ -1288,14 +1288,12 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
 
                 <svg 
                   className="absolute inset-0 w-full h-full pointer-events-none" 
-                  viewBox={`0 0 ${containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800} ${containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600}`} 
+                  viewBox={`0 0 ${pixelW} ${pixelH}`} 
                   preserveAspectRatio="none" 
                   style={{ top: 0, left: 0 }}
                 >
                   {item.areas.map((area: any) => {
                     const isActive = activeAreaId === area.id;
-                    const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
-                    const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
                     return (
                       <g key={area.id}>
                         {area.points.map((p: any, idx: number) => {
@@ -1363,8 +1361,6 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                     );
                   })}
                   {mode === 'draw' && activeAreaId && isDrawing && !pointDrag && cursorPos && activeArea && activeArea.points.length > 0 && (() => {
-                    const pixelW = containerStyle.width.includes('px') ? parseFloat(containerStyle.width) : 800;
-                    const pixelH = containerStyle.height.includes('px') ? parseFloat(containerStyle.height) : 600;
                     return (
                       <g style={{ pointerEvents: 'none' }}>
                         <line x1={(activeArea.points[activeArea.points.length - 1].x * pixelW) / 100} y1={(activeArea.points[activeArea.points.length - 1].y * pixelH) / 100} x2={(cursorPos.x * pixelW) / 100} y2={(cursorPos.y * pixelH) / 100} stroke={activeArea.lineColor} strokeWidth={2/zoom} strokeDasharray="4 4" />
@@ -1456,11 +1452,11 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                 <input type="file" accept={ACCEPTED_IMAGE_FORMATS} className="hidden" disabled={isUploadingObj} onChange={handleImageUpload} />
               </label>
               <button onClick={() => {
-                handleItemChange(item.id, 'imageFit', (item.imageFit || 'fill') === 'fill' ? 'fit' : 'fill');
+                handleItemChange(item.id, 'imageFit', (item.imageFit || 'fit') === 'fit' ? 'fill' : 'fit');
                 setZoom(1);
                 setPan({ x: 0, y: 0 });
               }} className="cursor-pointer bg-white/90 border border-gray-300 text-gray-700 px-3 py-1.5 rounded shadow-sm hover:bg-white flex items-center text-xs font-bold transition-colors" title="รีเซ็ตและเปลี่ยนรูปแบบการจัดวางรูปภาพ">
-                {(item.imageFit || 'fill') === 'fill' ? 'โหมด: เต็มกรอบ (Fill)' : 'โหมด: พอดีภาพ (Fit)'}
+                {(item.imageFit || 'fit') === 'fit' ? 'โหมด: พอดีภาพ (Fit)' : 'โหมด: เต็มกรอบ (Fill)'}
               </button>
               
               {/* FIX: Dynamic toggle button to let users reopen the floating panel if closed */}
