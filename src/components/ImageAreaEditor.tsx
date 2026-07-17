@@ -398,7 +398,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                 <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${pixelW} ${pixelH}`} preserveAspectRatio="none" style={{ top: 0, left: 0 }}>
                   <defs>
                     <filter id={`alpha-to-white-${idPrefix}`}>
-                      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0" />
+                      <feColorMatrix type="matrix" values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 1 0" />
                       <feComponentTransfer>
                         <feFuncA type="linear" slope="5" />
                       </feComponentTransfer>
@@ -1139,9 +1139,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                           const maskIdH = `mask-h-${idPrefix}-${item.id}-${area.id}`;
                           maskElements.push(
                             <g key="H" clipPath={`url(#${clipId})`}>
-                              <mask id={maskIdH} mask-type="alpha" style={{ maskType: 'alpha' }}>
+                              <mask id={maskIdH}>
                                 <image 
-                                  href={optImg(maskImgFallback, 800)} 
+                                  href={optImg(maskImgFallback, 800, true)} 
                                   x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} 
                                   preserveAspectRatio="none" 
                                   filter={`url(#alpha-to-white-${idPrefix})`}
@@ -1158,7 +1158,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                 {fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} />}
                               </g>
                               <image 
-                                href={optImg(maskImgFallback, 800)} 
+                                href={optImg(maskImgFallback, 800, true)} 
                                 x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} 
                                 preserveAspectRatio="none" 
                                 opacity={maskOpacity} 
@@ -1166,7 +1166,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                               />
                               {styleMain1.includes('มู่ลี่') && (
                                 <image 
-                                  href={optImg(maskImgFallback, 800)} 
+                                  href={optImg(maskImgFallback, 800, true)} 
                                   x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} 
                                   preserveAspectRatio="none" 
                                   opacity={0.15} 
@@ -1183,9 +1183,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                             const maskIdR = `mask-w-r-${idPrefix}-${item.id}-${area.id}`;
                             maskElements.push(
                               <g key="W" clipPath={`url(#${clipId})`}>
-                                <mask id={maskIdL} mask-type="alpha" style={{ maskType: 'alpha' }}>
+                                <mask id={maskIdL}>
                                   <image 
-                                    href={optImg(leftImg, 800)} 
+                                    href={optImg(leftImg, 800, true)} 
                                     x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} 
                                     preserveAspectRatio="none" 
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
@@ -1196,14 +1196,14 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                   <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
                                   {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
                                 </g>
-                                <image href={optImg(leftImg, 800)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
                                 {styleMain1.includes('มู่ลี่') && (
-                                  <image href={optImg(leftImg, 800)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                  <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
                                 )}
 
-                                <mask id={maskIdR} mask-type="alpha" style={{ maskType: 'alpha' }}>
+                                <mask id={maskIdR}>
                                   <image 
-                                    href={optImg(rightImg, 800)} 
+                                    href={optImg(rightImg, 800, true)} 
                                     x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} 
                                     preserveAspectRatio="none" 
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
@@ -1214,9 +1214,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                   <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
                                   {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
                                 </g>
-                                <image href={optImg(rightImg, 800)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
                                 {styleMain1.includes('มู่ลี่') && (
-                                  <image href={optImg(rightImg, 800)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                  <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
                                 )}
                               </g>
                             );
@@ -1225,9 +1225,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                             const maskIdR = `mask-w-r-${idPrefix}-${item.id}-${area.id}`;
                             maskElements.push(
                               <g key="R" clipPath={`url(#${clipId})`}>
-                                <mask id={maskIdR} mask-type="alpha" style={{ maskType: 'alpha' }}>
+                                <mask id={maskIdR}>
                                   <image 
-                                    href={optImg(rightImg, 800)} 
+                                    href={optImg(rightImg, 800, true)} 
                                     x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} 
                                     preserveAspectRatio="none" 
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
@@ -1238,9 +1238,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                   <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
                                   {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
                                 </g>
-                                <image href={optImg(rightImg, 800)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
                                 {styleMain1.includes('มู่ลี่') && (
-                                  <image href={optImg(rightImg, 800)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                  <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
                                 )}
                               </g>
                             );
@@ -1249,9 +1249,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                             const maskIdL = `mask-w-l-${idPrefix}-${item.id}-${area.id}`;
                             maskElements.push(
                               <g key="L" clipPath={`url(#${clipId})`}>
-                                <mask id={maskIdL} mask-type="alpha" style={{ maskType: 'alpha' }}>
+                                <mask id={maskIdL}>
                                   <image 
-                                    href={optImg(leftImg, 800)} 
+                                    href={optImg(leftImg, 800, true)} 
                                     x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} 
                                     preserveAspectRatio="none" 
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
@@ -1262,10 +1262,45 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                   <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
                                   {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
                                 </g>
-                                <image href={optImg(leftImg, 800)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
                                 {styleMain1.includes('มู่ลี่') && (
-                                  <image href={optImg(leftImg, 800)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                  <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
                                 )}
+                              </g>
+                            );
+                          }
+                        }
+                      } else {
+                        // Safe fallback for custom styles (like Roller Blinds / ม่านม้วน) when no mask image exists
+                        if (maskType === 'height') {
+                          maskElements.push(
+                            <g key="H-fallback" clipPath={`url(#${clipId})`}>
+                              <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} />
+                              {fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} />}
+                            </g>
+                          );
+                        } else {
+                          if (action.includes('แยกกลาง')) {
+                            maskElements.push(
+                              <g key="W-fallback-split" clipPath={`url(#${clipId})`}>
+                                <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                                <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                              </g>
+                            );
+                          } else if (action.includes('ขวา')) {
+                            maskElements.push(
+                              <g key="R-fallback" clipPath={`url(#${clipId})`}>
+                                <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
+                              </g>
+                            );
+                          } else {
+                            maskElements.push(
+                              <g key="L-fallback" clipPath={`url(#${clipId})`}>
+                                <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
+                                {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
                               </g>
                             );
                           }

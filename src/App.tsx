@@ -739,8 +739,26 @@ const App: React.FC = () => {
               return appDB.curtainTypes[fab.mainType]?.[fab.subType]?.[fab.name]?.[fab.color];
             };
 
-            let imgMain = null; let txtMain = ''; let colMain = '';
-            let imgSheer = null; let txtSheer = ''; let colSheer = '';
+            const getHexColor = (colorStr: string) => {
+              if (!colorStr) return '';
+              if (colorStr.startsWith('#')) return colorStr;
+              const lowerCol = colorStr.toLowerCase();
+              if (lowerCol.includes('ครีม') || lowerCol.includes('cream')) return '#FFFDD0';
+              if (lowerCol.includes('ขาว') || lowerCol.includes('white')) return '#F9F9F9';
+              if (lowerCol.includes('เทา') || lowerCol.includes('gray') || lowerCol.includes('grey')) return '#9CA3AF';
+              if (lowerCol.includes('น้ำตาล') || lowerCol.includes('brown')) return '#78350F';
+              if (lowerCol.includes('เบจ') || lowerCol.includes('beige')) return '#F5F5DC';
+              if (lowerCol.includes('ทอง') || lowerCol.includes('gold')) return '#FBBF24';
+              if (lowerCol.includes('น้ำเงิน') || lowerCol.includes('blue')) return '#1E3A8A';
+              if (lowerCol.includes('ชมพู') || lowerCol.includes('pink')) return '#F472B6';
+              if (lowerCol.includes('เขียว') || lowerCol.includes('green')) return '#047857';
+              if (lowerCol.includes('แดง') || lowerCol.includes('red')) return '#B91C1C';
+              if (lowerCol.includes('ดำ') || lowerCol.includes('black') || lowerCol.includes('charcoal') || lowerCol.includes('เทาเข้ม') || lowerCol.includes('dark') || lowerCol.includes('เข้ม')) return '#1F2937';
+              return '#E5E7EB';
+            };
+
+            let imgMain = null; let txtMain = ''; let colMain = ''; let colorMainValue = '';
+            let imgSheer = null; let txtSheer = ''; let colSheer = ''; let colorSheerValue = '';
             
             let tapeImg = null;
             let tapeText = '';
@@ -756,11 +774,13 @@ const App: React.FC = () => {
                  imgMain = getFabImg(fab1);
                  txtMain = fab1.subType || 'ม่าน 1';
                  colMain = `${fab1.name || ''} ${fab1.name && fab1.color ? '/' : ''} ${fab1.color || ''}`.trim();
+                 colorMainValue = fab1.color ? getHexColor(fab1.color) : '';
                }
                if (fab2 && item.layers === 2) {
                  imgSheer = getFabImg(fab2);
                  txtSheer = fab2.subType || 'ม่าน 2';
                  colSheer = `${fab2.name || ''} ${fab2.name && fab2.color ? '/' : ''} ${fab2.color || ''}`.trim();
+                 colorSheerValue = fab2.color ? getHexColor(fab2.color) : '';
                }
                
                if (isBlindsHoriz) {
@@ -797,6 +817,12 @@ const App: React.FC = () => {
                    }
                  }
                  tapeColorValue = primaryArea.blindsTapeColor || autoTapeColor;
+                 
+                 // If item.layers is 2 and we are Horizontal Blinds, the second fabric is likely the tape!
+                 // If tape has no image, let's use tapeColorValue as colorSheerValue to fill the background!
+                 if (item.layers === 2 && !imgSheer) {
+                   colorSheerValue = tapeColorValue;
+                 }
                }
             }
 
@@ -823,14 +849,23 @@ const App: React.FC = () => {
                       
                       <div className="h-[25%] lg:h-[30%] print:h-[30%] min-h-[100px] w-full p-2 bg-gray-50 flex items-center overflow-x-auto">
                         <div className="w-full h-full min-w-[350px] md:min-w-[400px] grid grid-cols-4 gap-1.5 sm:gap-2 print:gap-4">
-                          <InfoCard title="รูปแบบม่าน" imgUrl={styleImg1} text1={`${sMain1 || '-'} ${item.layers === 2 ? `/ ${sMain2 || '-'}` : ''}`} />
+                          <InfoCard title="รูปแบบม่าน" imgUrl={styleImg1} text1={`${sMain1 || '-'} ${item.layers === 2 ? `/ ${sMain2 || '-'}` : ''}`} fallbackType="style" />
                           <InfoCard 
                             title={txtMain || 'ชั้นที่ 1'} 
                             imgUrl={imgMain} 
                             text1={colMain || '-'} 
+                            bgColor={colorMainValue}
+                            fallbackType="fabric"
                           />
-                          <InfoCard title={item.layers === 2 ? (txtSheer || 'ชั้นที่ 2') : 'ชั้นที่ 2'} imgUrl={item.layers === 2 ? imgSheer : null} text1={item.layers === 2 ? (colSheer || '-') : '-'} isDim={item.layers === 1} />
-                          <InfoCard title="ระยะชายม่าน" imgUrl={marginImg} text1={item.marginBottom || '-'} />
+                          <InfoCard 
+                            title={item.layers === 2 ? (txtSheer || 'ชั้นที่ 2') : 'ชั้นที่ 2'} 
+                            imgUrl={item.layers === 2 ? imgSheer : null} 
+                            text1={item.layers === 2 ? (colSheer || '-') : '-'} 
+                            isDim={item.layers === 1} 
+                            bgColor={item.layers === 2 ? colorSheerValue : ''}
+                            fallbackType="sheer"
+                          />
+                          <InfoCard title="ระยะชายม่าน" imgUrl={marginImg} text1={item.marginBottom || '-'} fallbackType="margin" />
                         </div>
                       </div>
                     </div>

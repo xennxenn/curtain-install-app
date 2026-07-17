@@ -1,10 +1,23 @@
 export const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dsxpwfujb/image/upload";
 export const CLOUDINARY_UPLOAD_PRESET = "ml_default"; 
 
-export const optImg = (url: string | null | undefined, width?: number): string => {
+export const optImg = (url: string | null | undefined, width?: number, forcePng?: boolean): string => {
   if (!url || typeof url !== 'string' || !url.includes('cloudinary.com/')) return url || '';
-  if (url.includes('q_auto')) return url; 
-  return url.replace('/upload/', `/upload/f_auto,q_auto${width ? `,w_${width}` : ''}/`);
+  
+  // Clean up any existing auto-transformations to ensure we apply the correct format (png vs jpg)
+  let cleanUrl = url;
+  if (url.includes('/upload/')) {
+    const parts = url.split('/upload/');
+    const rightPart = parts[1];
+    if (rightPart && !rightPart.startsWith('v') && rightPart.includes('/')) {
+      const subParts = rightPart.split('/');
+      subParts.shift(); // remove transformation part
+      cleanUrl = `${parts[0]}/upload/${subParts.join('/')}`;
+    }
+  }
+
+  const format = forcePng ? 'f_png' : 'f_jpg';
+  return cleanUrl.replace('/upload/', `/upload/${format},q_auto${width ? `,w_${width}` : ''}/`);
 };
 
 export const removeWhiteBackground = (dataUrl: string): Promise<string> => {
