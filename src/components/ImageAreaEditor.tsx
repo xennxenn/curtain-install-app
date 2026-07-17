@@ -1159,6 +1159,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                 preserveAspectRatio="none" 
                                 opacity={maskOpacity} 
                                 style={{ mixBlendMode: 'multiply' }} 
+                                mask={`url(#${maskIdH})`}
                               />
                               {styleMain1.includes('มู่ลี่') && (
                                 <image 
@@ -1167,6 +1168,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                   preserveAspectRatio="none" 
                                   opacity={0.15} 
                                   style={{ mixBlendMode: 'screen' }} 
+                                  mask={`url(#${maskIdH})`}
                                 />
                               )}
                             </g>
@@ -1189,9 +1191,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                 </mask>
                                 <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} mask={`url(#${maskIdL})`} />
                                 {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} mask={`url(#${maskIdL})`} />}
-                                <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} mask={`url(#${maskIdL})`} />
                                 {styleMain1.includes('มู่ลี่') && (
-                                  <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                  <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} mask={`url(#${maskIdL})`} />
                                 )}
 
                                 <mask id={maskIdR}>
@@ -1204,9 +1206,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                 </mask>
                                 <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} mask={`url(#${maskIdR})`} />
                                 {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} mask={`url(#${maskIdR})`} />}
-                                <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} mask={`url(#${maskIdR})`} />
                                 {styleMain1.includes('มู่ลี่') && (
-                                  <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                  <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} mask={`url(#${maskIdR})`} />
                                 )}
                               </g>
                             );
@@ -1225,9 +1227,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                 </mask>
                                 <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} mask={`url(#${maskIdR})`} />
                                 {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} mask={`url(#${maskIdR})`} />}
-                                <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} mask={`url(#${maskIdR})`} />
                                 {styleMain1.includes('มู่ลี่') && (
-                                  <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                  <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} mask={`url(#${maskIdR})`} />
                                 )}
                               </g>
                             );
@@ -1246,9 +1248,9 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                 </mask>
                                 <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} mask={`url(#${maskIdL})`} />
                                 {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} mask={`url(#${maskIdL})`} />}
-                                <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
+                                <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} mask={`url(#${maskIdL})`} />
                                 {styleMain1.includes('มู่ลี่') && (
-                                  <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
+                                  <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} mask={`url(#${maskIdL})`} />
                                 )}
                               </g>
                             );
