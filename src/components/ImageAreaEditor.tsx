@@ -1145,15 +1145,15 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                   x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} 
                                   preserveAspectRatio="none" 
                                   filter={`url(#alpha-to-white-${idPrefix})`}
-                                  style={{ filter: 'brightness(0) invert(1)' }}
                                 />
                               </mask>
-                              {/* Solid background/sheer base layer to fill transparent gaps/mesh at 0.6 opacity */}
-                              {!isBlinds && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} opacity={0.6} />}
-                              {!isBlinds && fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} opacity={0.6} />}
 
-                              {/* Masked full opacity fabric layer */}
+                              {/* Masked full opacity fabric layer and sheer base layer */}
                               <g mask={`url(#${maskIdH})`}>
+                                {/* Solid background/sheer base layer to fill transparent gaps/mesh at 0.6 opacity */}
+                                {!isBlinds && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} opacity={0.6} />}
+                                {!isBlinds && fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} opacity={0.6} />}
+
                                 <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} />
                                 {fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} />}
                               </g>
@@ -1189,7 +1189,6 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                     x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} 
                                     preserveAspectRatio="none" 
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
-                                    style={{ filter: 'brightness(0) invert(1)' }}
                                   />
                                 </mask>
                                 <g mask={`url(#${maskIdL})`}>
@@ -1207,7 +1206,6 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                     x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} 
                                     preserveAspectRatio="none" 
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
-                                    style={{ filter: 'brightness(0) invert(1)' }}
                                   />
                                 </mask>
                                 <g mask={`url(#${maskIdR})`}>
@@ -1231,7 +1229,6 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                     x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} 
                                     preserveAspectRatio="none" 
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
-                                    style={{ filter: 'brightness(0) invert(1)' }}
                                   />
                                 </mask>
                                 <g mask={`url(#${maskIdR})`}>
@@ -1255,7 +1252,6 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                     x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} 
                                     preserveAspectRatio="none" 
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
-                                    style={{ filter: 'brightness(0) invert(1)' }}
                                   />
                                 </mask>
                                 <g mask={`url(#${maskIdL})`}>
