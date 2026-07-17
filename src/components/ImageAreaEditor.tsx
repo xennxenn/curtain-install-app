@@ -1146,14 +1146,13 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                               </mask>
 
                               {/* Masked full opacity fabric layer and sheer base layer */}
-                              <g mask={`url(#${maskIdH})`}>
-                                {/* Solid background/sheer base layer to fill transparent gaps/mesh at 0.6 opacity */}
-                                {!isBlinds && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} opacity={0.6} />}
-                                {!isBlinds && fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} opacity={0.6} />}
+                              {/* Solid background/sheer base layer to fill transparent gaps/mesh at 0.6 opacity */}
+                              {!isBlinds && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} opacity={0.6} mask={`url(#${maskIdH})`} />}
+                              {!isBlinds && fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} opacity={0.6} mask={`url(#${maskIdH})`} />}
 
-                                <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} />
-                                {fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} />}
-                              </g>
+                              <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={finalColor} mask={`url(#${maskIdH})`} />
+                              {fabricImg && <rect x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} fill={`url(#${patId})`} mask={`url(#${maskIdH})`} />}
+
                               <image 
                                 href={optImg(maskImgFallback, 800, true)} 
                                 x={minX_px} y={minY_px} width={w_px} height={h_px * mPct} 
@@ -1188,10 +1187,8 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
                                   />
                                 </mask>
-                                <g mask={`url(#${maskIdL})`}>
-                                  <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
-                                  {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
-                                </g>
+                                <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} mask={`url(#${maskIdL})`} />
+                                {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} mask={`url(#${maskIdL})`} />}
                                 <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
                                 {styleMain1.includes('มู่ลี่') && (
                                   <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
@@ -1205,10 +1202,8 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
                                   />
                                 </mask>
-                                <g mask={`url(#${maskIdR})`}>
-                                  <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
-                                  {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
-                                </g>
+                                <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} mask={`url(#${maskIdR})`} />
+                                {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} mask={`url(#${maskIdR})`} />}
                                 <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
                                 {styleMain1.includes('มู่ลี่') && (
                                   <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
@@ -1228,10 +1223,8 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
                                   />
                                 </mask>
-                                <g mask={`url(#${maskIdR})`}>
-                                  <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
-                                  {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
-                                </g>
+                                <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} mask={`url(#${maskIdR})`} />
+                                {fabricImg && <rect x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} mask={`url(#${maskIdR})`} />}
                                 <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
                                 {styleMain1.includes('มู่ลี่') && (
                                   <image href={optImg(rightImg, 800, true)} x={maxX_px - (w_px * mPct)} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
@@ -1251,10 +1244,8 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                                     filter={`url(#alpha-to-white-${idPrefix})`} 
                                   />
                                 </mask>
-                                <g mask={`url(#${maskIdL})`}>
-                                  <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} />
-                                  {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} />}
-                                </g>
+                                <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={finalColor} mask={`url(#${maskIdL})`} />
+                                {fabricImg && <rect x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} fill={`url(#${patId})`} mask={`url(#${maskIdL})`} />}
                                 <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={maskOpacity} style={{ mixBlendMode: 'multiply' }} />
                                 {styleMain1.includes('มู่ลี่') && (
                                   <image href={optImg(leftImg, 800, true)} x={minX_px} y={minY_px} width={w_px * mPct} height={h_px} preserveAspectRatio="none" opacity={0.15} style={{ mixBlendMode: 'screen' }} />
