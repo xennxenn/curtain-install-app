@@ -398,10 +398,7 @@ export const ImageAreaEditor: React.FC<ImageAreaEditorProps> = React.memo(({
                 <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${pixelW} ${pixelH}`} preserveAspectRatio="none" style={{ top: 0, left: 0 }}>
                   <defs>
                     <filter id={`alpha-to-white-${idPrefix}`}>
-                      <feColorMatrix type="matrix" values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 1 0" />
-                      <feComponentTransfer>
-                        <feFuncA type="linear" slope="5" />
-                      </feComponentTransfer>
+                      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0" />
                     </filter>
                     <linearGradient id={`blinds-horiz-grad-${idPrefix}`} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#ffffff" stopOpacity={0.28} />

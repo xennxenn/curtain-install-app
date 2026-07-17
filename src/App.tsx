@@ -763,6 +763,7 @@ const App: React.FC = () => {
             let tapeImg = null;
             let tapeText = '';
             let tapeColorValue = '';
+            let hasTape = false;
             const isBlindsHoriz = (sMain1 || '').includes('มู่ลี่');
             
             if (item.areas.length > 0) {
@@ -792,6 +793,7 @@ const App: React.FC = () => {
                    f.subType?.includes('เทป')
                  );
                  if (tapeFab) {
+                   hasTape = true;
                    tapeImg = getFabImg(tapeFab);
                    tapeText = `${tapeFab.name || ''} ${tapeFab.color || ''}`.trim();
                  }
@@ -826,7 +828,19 @@ const App: React.FC = () => {
                }
             }
 
-            const marginImg = item.marginBottom && item.marginBottom !== '-' ? appDB.marginImages?.[item.marginBottom] : null;
+            let marginImg = item.marginBottom && item.marginBottom !== '-' ? appDB.marginImages?.[item.marginBottom] : null;
+            if (item.marginBottom && item.marginBottom !== '-' && !marginImg && appDB.marginImages) {
+              const marginKeys = Object.keys(appDB.marginImages);
+              const foundKey = marginKeys.find(key => 
+                item.marginBottom.includes(key) || key.includes(item.marginBottom) ||
+                (item.marginBottom.includes('ลอย') && key.includes('ลอย')) ||
+                (item.marginBottom.includes('พื้น') && key.includes('พื้น')) ||
+                (item.marginBottom.includes('บัว') && key.includes('บัว'))
+              );
+              if (foundKey) {
+                marginImg = appDB.marginImages[foundKey];
+              }
+            }
 
             return (
               <div key={item.id} className="print-center-page w-full relative mb-10 print:mb-0">
@@ -855,6 +869,9 @@ const App: React.FC = () => {
                             imgUrl={imgMain} 
                             text1={colMain || '-'} 
                             bgColor={colorMainValue}
+                            imgUrl2={isBlindsHoriz && hasTape ? tapeImg : undefined}
+                            color2={isBlindsHoriz && hasTape ? tapeColorValue : undefined}
+                            text2={isBlindsHoriz && hasTape ? tapeText : undefined}
                             fallbackType="fabric"
                           />
                           <InfoCard 
